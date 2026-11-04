@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Võ Ao Sen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --primary: #2563eb; --primary-light: #eff6ff; --primary-hover: #1d4ed8;
+            --bg-body: #f1f5f9; --bg-card: #ffffff; --bg-subtle: #f8fafc;
+            --text-main: #0f172a; --text-secondary: #334155; --text-muted: #64748b;
+            --border: #e2e8f0; --border-light: #f1f5f9;
+            --success: #059669; --success-bg: #ecfdf5; --success-hover: #047857;
+            --danger: #dc2626; --danger-bg: #fef2f2;
+            --table-hover: #f1f5f9; --table-stripe: #fafaf9; --group-bg: #f8fafc;
+            --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+            --shadow-md: 0 4px 12px -2px rgb(15 23 42 / 0.06), 0 2px 4px -2px rgb(15 23 42 / 0.04);
+            --sticky-shadow: 4px 0 8px -2px rgba(15, 23, 42, 0.06);
+        }
+        body.dark-mode {
+            --primary: #3b82f6; --primary-light: rgba(59, 130, 246, 0.15); --primary-hover: #60a5fa;
+            --bg-body: #090d16; --bg-card: #111827; --bg-subtle: #1e293b;
+            --text-main: #f8fafc; --text-secondary: #cbd5e1; --text-muted: #94a3b8;
+            --border: #1f2937; --border-light: #1e293b;
+            --success: #10b981; --success-bg: rgba(16, 185, 129, 0.15); --success-hover: #059669;
+            --danger: #f87171; --danger-bg: rgba(239, 68, 68, 0.15);
+            --table-hover: #1e293b; --table-stripe: #0f1523; --group-bg: #0b111e;
+            --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.4);
+            --sticky-shadow: 4px 0 10px -2px rgba(0, 0, 0, 0.45);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-body); color: var(--text-main);
+            min-height: 100vh; display: flex; flex-direction: column;
+            transition: background-color 0.2s ease, color 0.2s ease;
+            font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+        }
+        body.modal-open { overflow: hidden; }
+        .svg-icon { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; flex-shrink: 0; }
+        .svg-icon-sm { width: 14px; height: 14px; }
+        .svg-icon-lg { width: 20px; height: 20px; }
+        .svg-icon-xl { width: 28px; height: 28px; }
+
+        .top-navbar {
+            height: 60px; background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border); padding: 0 24px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 40; box-shadow: var(--shadow-sm);
+        }
+        .brand-wrap { display: flex; align-items: center; gap: 12px; }
+        .brand-logo {
+            width: 36px; height: 36px; border-radius: 9px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+        }
+        .brand-title { font-size: 15px; font-weight: 700; color: var(--text-main); letter-spacing: -0.01em; line-height: 1.2; }
+        .brand-subtitle { font-size: 11.5px; color: var(--text-muted); font-weight: 400; }
+        .nav-segmented { display: flex; align-items: center; gap: 4px; background-color: var(--bg-subtle); padding: 4px; border-radius: 8px; border: 1px solid var(--border); }
+        .seg-btn { border: none; background: transparent; color: var(--text-muted); font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: all 0.15s ease; }
+        .seg-btn:hover { color: var(--text-main); }
+        .seg-btn.active { background-color: var(--bg-card); color: var(--primary); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .seg-badge { font-size: 11px; padding: 1px 6px; border-radius: 999px; background-color: var(--border); color: var(--text-secondary); font-weight: 600; }
+        .seg-btn.active .seg-badge { background-color: var(--primary-light); color: var(--primary); }
+        .header-controls { display: flex; align-items: center; gap: 10px; }
+        .btn-icon { background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-secondary); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; }
+        .btn-icon:hover { background: var(--bg-card); color: var(--primary); border-color: var(--primary); }
+
+        .main-workspace { width: 100%; max-width: 1520px; margin: 0 auto; padding: 20px 24px; flex: 1; display: flex; flex-direction: column; }
+        .tab-content { display: none; flex-direction: column; gap: 16px; flex: 1; animation: fadeIn 0.2s ease-out; }
+        .tab-content.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+
+        .upload-hero { background-color: var(--bg-card); border: 1.5px dashed var(--border); border-radius: 12px; padding: 36px 24px; text-align: center; transition: all 0.2s ease; position: relative; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); }
+        .upload-hero:hover, .upload-hero.dragover { border-color: var(--primary); background-color: var(--primary-light); }
+        .upload-hero input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 2; }
+        .upload-hero-icon { width: 52px; height: 52px; border-radius: 12px; background-color: var(--bg-subtle); color: var(--primary); display: flex; align-items: center; justify-content: center; margin-bottom: 12px; border: 1px solid var(--border); transition: transform 0.2s ease; }
+        .upload-hero:hover .upload-hero-icon { transform: translateY(-2px); background-color: var(--bg-card); }
+        .upload-hero-title { font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 4px; }
+        .upload-hero-sub { font-size: 12.5px; color: var(--text-muted); }
+
+        .workspace-bar { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: var(--shadow-sm); position: relative; }
+        .workspace-bar.dragover { border-color: var(--primary); background-color: var(--primary-light); }
+        .workspace-left { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .btn-upload-compact { position: relative; overflow: hidden; background-color: var(--bg-subtle); border: 1px dashed var(--primary); color: var(--primary); padding: 7px 13px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; }
+        .btn-upload-compact:hover { background-color: var(--primary-light); }
+        .btn-upload-compact input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .stat-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; background-color: var(--bg-subtle); border: 1px solid var(--border); border-radius: 7px; font-size: 12.5px; color: var(--text-secondary); font-weight: 500; }
+        .stat-pill b { color: var(--text-main); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+        .status-pill-btn { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; background-color: var(--success-bg); border: 1px solid rgba(16, 185, 129, 0.3); color: var(--success); border-radius: 7px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .status-pill-btn:hover { filter: brightness(0.97); }
+        .file-drawer { display: none; background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; box-shadow: var(--shadow-md); }
+        .file-drawer.open { display: block; }
+        .progress-track { width: 100%; height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 8px 0 10px 0; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.25s ease; }
+        .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px; max-height: 130px; overflow-y: auto; }
+        .file-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; background: var(--bg-subtle); border-radius: 6px; border: 1px solid var(--border); font-size: 12px; }
+        .file-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 165px; color: var(--text-secondary); }
+
+        .workspace-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .divider-v { width: 1px; height: 24px; background-color: var(--border); margin: 0 4px; }
+        button.btn { border: 1px solid var(--border); padding: 7px 13px; border-radius: 7px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 6px; background-color: var(--bg-card); color: var(--text-secondary); line-height: 1.2; }
+        button.btn:hover { background-color: var(--bg-subtle); color: var(--text-main); border-color: #cbd5e1; }
+        button.btn-primary { background-color: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2); }
+        button.btn-primary:hover { background-color: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+        button.btn-success { background-color: var(--success); color: #fff; border-color: var(--success); font-weight: 600; box-shadow: 0 1px 2px rgba(5, 150, 105, 0.2); }
+        button.btn-success:hover { background-color: var(--success-hover); border-color: var(--success-hover); color: #fff; }
+        button.btn-danger-ghost { background-color: transparent; color: var(--text-muted); border-color: transparent; }
+        button.btn-danger-ghost:hover { background-color: var(--danger-bg); color: var(--danger); border-color: rgba(220, 38, 38, 0.2); }
+
+        .table-card { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg-card); box-shadow: var(--shadow-sm); flex: 1; display: flex; flex-direction: column; }
+        .table-scroll { overflow: auto; max-height: calc(100vh - 220px); min-height: 380px; flex: 1; scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+        .table-scroll::-webkit-scrollbar { width: 7px; height: 7px; }
+        .table-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+        body.dark-mode .table-scroll::-webkit-scrollbar-thumb { background-color: #334155; }
+        table.data-table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: 13px; white-space: nowrap; }
+        table.data-table thead tr.tier-group th { background-color: var(--group-bg); padding: 7px 14px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); position: sticky; top: 0; z-index: 22; text-align: center; }
+        th.cat-hanh-chinh { border-top: 3px solid #2563eb; color: #1d4ed8 !important; }
+        th.cat-huyet-hoc  { border-top: 3px solid #e11d48; color: #be123c !important; }
+        th.cat-hoa-sinh   { border-top: 3px solid #059669; color: #047857 !important; }
+        th.cat-nuoc-tieu  { border-top: 3px solid #d97706; color: #b45309 !important; }
+        th.cat-vi-sinh    { border-top: 3px solid #7c3aed; color: #6d28d9 !important; }
+        th.cat-khac       { border-top: 3px solid #64748b; color: #475569 !important; }
+        body.dark-mode th.cat-hanh-chinh { color: #60a5fa !important; }
+        body.dark-mode th.cat-huyet-hoc  { color: #fb7185 !important; }
+        body.dark-mode th.cat-hoa-sinh   { color: #34d399 !important; }
+        body.dark-mode th.cat-nuoc-tieu  { color: #fbbf24 !important; }
+        body.dark-mode th.cat-vi-sinh    { color: #a78bfa !important; }
+        body.dark-mode th.cat-khac       { color: #94a3b8 !important; }
+        table.data-table thead tr.tier-indicator th { background-color: var(--bg-card); padding: 10px 14px; font-weight: 600; font-size: 12.5px; border-bottom: 2px solid var(--border); border-right: 1px solid var(--border-light); position: sticky; top: 32px; z-index: 21; color: var(--text-main); text-align: center; }
+        table.data-table td { padding: 9px 14px; border-bottom: 1px solid var(--border-light); border-right: 1px solid var(--border-light); color: var(--text-main); transition: background-color 0.1s; }
+        table.data-table tbody tr:nth-child(even) td { background-color: var(--table-stripe); }
+        table.data-table tbody tr:hover td { background-color: var(--table-hover); }
+        table.data-table thead tr.tier-indicator th:first-child, table.data-table tbody td:first-child { position: sticky; left: 0; background-color: var(--bg-card); border-right: 1px solid var(--border); font-weight: 600; text-align: left; z-index: 25; box-shadow: var(--sticky-shadow); min-width: 170px; }
+        table.data-table thead tr.tier-indicator th:first-child { z-index: 26; }
+        table.data-table tbody tr:nth-child(even) td:first-child { background-color: var(--table-stripe); }
+        table.data-table tbody tr:hover td:first-child { background-color: var(--table-hover); }
+        table.data-table td.col-data { text-align: center; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace; font-size: 12.5px; color: var(--text-main); }
+        table.data-table td[contenteditable="true"] { cursor: text; }
+        table.data-table td[contenteditable="true"]:hover { box-shadow: inset 0 0 0 1px #cbd5e1; }
+        table.data-table td[contenteditable="true"]:focus { outline: none; box-shadow: inset 0 0 0 2px var(--primary); background-color: var(--bg-card) !important; z-index: 30; position: relative; }
+        .table-footer { padding: 8px 16px; background-color: var(--bg-subtle); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); }
+        .empty-state { text-align: center; padding: 64px 20px; color: var(--text-muted); white-space: normal; }
+        .empty-state > div { margin-left: auto; margin-right: auto; text-align: center; }
+
+        /* HISTORY UI */
+        .history-toolbar { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; box-shadow: var(--shadow-sm); }
+        .history-stats { display: flex; gap: 24px; align-items: center; }
+        .history-stat-item { display: flex; flex-direction: column; gap: 2px; }
+        .history-stat-item .label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+        .history-stat-item .value { font-size: 20px; font-weight: 700; color: var(--primary); font-family: 'JetBrains Mono', monospace; line-height: 1.1; }
+        .history-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .history-search { position: relative; }
+        .history-search input { width: 280px; padding: 9px 32px 9px 36px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-subtle); color: var(--text-main); font-size: 13px; transition: all 0.15s; }
+        .history-search input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); background: var(--bg-card); }
+        .history-search .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+        .history-sort { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-subtle); color: var(--text-main); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+        .history-sort:hover { border-color: var(--primary); }
+        .history-sort:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .history-list { display: flex; flex-direction: column; gap: 12px; }
+        .history-item { background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: 10px; padding: 16px 20px; display: flex; gap: 18px; align-items: center; box-shadow: var(--shadow-sm); transition: all 0.15s ease; }
+        .history-item:hover { border-color: #cbd5e1; border-left-color: var(--primary-hover); box-shadow: var(--shadow-md); }
+        .history-item.is-confirming { border-color: var(--danger); border-left-color: var(--danger); background: var(--danger-bg); }
+        .history-icon-box { width: 44px; height: 44px; border-radius: 10px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid rgba(37,99,235,0.15); }
+        .history-content { flex: 1; min-width: 0; }
+        .history-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+        .history-time { font-size: 14px; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 6px; }
+        .history-count-badge { font-size: 11.5px; padding: 3px 10px; border-radius: 999px; background: var(--primary-light); color: var(--primary); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+        .history-patients { display: flex; flex-wrap: wrap; gap: 6px; }
+        .patient-chip { font-size: 12.5px; padding: 4px 12px; border-radius: 6px; background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-secondary); font-weight: 500; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: all 0.15s; }
+        .patient-chip:hover { background: var(--bg-card); border-color: #cbd5e1; }
+        .patient-chip.more { background: var(--primary-light); color: var(--primary); border-color: rgba(37,99,235,0.25); font-weight: 600; }
+        .history-actions { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; align-items: center; }
+        .history-actions .btn { padding: 8px 14px; font-size: 13px; }
+        @media (max-width: 720px) {
+            .history-item { flex-direction: column; align-items: stretch; }
+            .history-icon-box { display: none; }
+            .history-actions { justify-content: flex-end; }
+            .history-toolbar { flex-direction: column; align-items: stretch; }
+            .history-stats { justify-content: space-around; }
+            .history-controls { flex-direction: column; }
+            .history-search input { width: 100%; }
+            .history-sort { width: 100%; }
+        }
+
+        /* Modals */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 1000; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.2s ease; backdrop-filter: blur(3px); padding: 16px; }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal-box { background: var(--bg-card); width: 100%; max-width: 960px; height: 84vh; max-height: 760px; border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 24px 38px -8px rgb(0 0 0 / 0.18); display: flex; flex-direction: column; transform: translateY(8px) scale(0.99); transition: transform 0.2s ease; overflow: hidden; }
+        .modal-overlay.active .modal-box { transform: translateY(0) scale(1); }
+        .modal-head { padding: 16px 22px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; background: var(--bg-card); }
+        .modal-head h3 { font-size: 15.5px; color: var(--text-main); font-weight: 700; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+        .modal-foot { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-subtle); flex-shrink: 0; flex-wrap: wrap; gap: 8px; }
+
+        /* Column modal */
+        .settings-toolbar { padding: 14px 22px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; background: var(--bg-subtle); }
+        .preset-group { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .preset-label { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-right: 4px; }
+        .btn-preset { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); padding: 5px 11px; border-radius: 6px; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-preset:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+        .btn-preset.clear { color: var(--danger); border-color: rgba(220, 38, 38, 0.25); }
+        .btn-preset.clear:hover { background: var(--danger-bg); border-color: var(--danger); }
+        .search-box { position: relative; flex: 1; min-width: 240px; max-width: 320px; }
+        .search-box input { width: 100%; padding: 7px 30px 7px 34px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg-card); color: var(--text-main); font-size: 13px; transition: all 0.15s; }
+        .search-box input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); }
+        .search-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--text-muted); background: none; border: none; cursor: pointer; display: none; padding: 2px; }
+        .search-clear:hover { color: var(--text-main); }
+        .settings-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+        .settings-sidebar { width: 250px; border-right: 1px solid var(--border); background: var(--bg-subtle); overflow-y: auto; display: flex; flex-direction: column; padding: 10px; flex-shrink: 0; gap: 3px; }
+        .sidebar-item { padding: 9px 12px; border-radius: 7px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; transition: all 0.15s; }
+        .sidebar-item:hover { background: var(--border-light); color: var(--text-main); }
+        .sidebar-item.active { background: var(--bg-card); color: var(--primary); font-weight: 600; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+        .sidebar-item .badge { background: var(--border); color: var(--text-secondary); font-size: 11px; padding: 2px 7px; border-radius: 999px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+        .sidebar-item.active .badge { background: var(--primary-light); color: var(--primary); }
+        .settings-content-area { flex: 1; min-width: 0; overflow-y: auto; background: var(--bg-card); display: flex; flex-direction: column; }
+        .settings-content-header { padding: 11px 20px; background: var(--bg-card); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; flex-shrink: 0; }
+        .settings-content-header label { font-weight: 600; font-size: 13px; color: var(--text-main); display: flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
+        .settings-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+        .settings-table td { padding: 9px 20px; border-bottom: 1px solid var(--border-light); }
+        .settings-table tr.data-row { cursor: pointer; transition: background-color 0.1s; }
+        .settings-table tr.data-row:hover td { background-color: var(--bg-subtle); }
+        .settings-table tr.data-row.is-selected td { background-color: rgba(37, 99, 235, 0.03); }
+        .col-check { width: 42px; text-align: center; }
+        .col-name { font-weight: 500; color: var(--text-main); }
+        .col-result { width: 35%; text-align: right; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+        .checkbox-custom { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); vertical-align: middle; }
+
+        /* Preview modal */
+        .preview-modal-body { flex: 1; overflow-y: auto; padding: 0; background: var(--bg-card); }
+        .preview-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+        .preview-table th { background: var(--bg-subtle); padding: 10px 16px; text-align: left; font-weight: 600; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 2; }
+        .preview-table td { padding: 9px 16px; border-bottom: 1px solid var(--border-light); }
+        .preview-table tbody tr:hover td { background: var(--bg-subtle); }
+        .preview-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+
+        /* TOAST NOTIFICATION (TOP RIGHT) */
+        #toast {
+            visibility: hidden;
+            min-width: 280px;
+            max-width: 420px;
+            background: #0f172a;
+            color: #fff;
+            border-radius: 8px;
+            padding: 14px 18px;
+            position: fixed;
+            z-index: 9999;
+            top: 76px; /* 60px thanh header + 16px margin */
+            right: 24px;
+            font-size: 13.5px;
+            font-weight: 500;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            gap: 10px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.25);
+            opacity: 0;
+            transform: translateX(20px);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+            text-align: left;
+            line-height: 1.4;
+        }
+        body.dark-mode #toast { 
+            background: #f8fafc; 
+            color: #0f172a; 
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+        }
+        #toast.show { 
+            visibility: visible; 
+            opacity: 1; 
+            transform: translateX(0); 
+        }
+
+        @media (max-width: 768px) {
+            .top-navbar { height: auto; padding: 12px 16px; flex-wrap: wrap; gap: 10px; }
+            .brand-subtitle { display: none; }
+            .main-workspace { padding: 14px 12px; }
+            .settings-body { flex-direction: column; }
+            .settings-sidebar { width: 100%; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--border); }
+            .sidebar-item { white-space: nowrap; gap: 6px; }
+            #toast { top: 16px; right: 12px; left: 12px; max-width: none; } /* Mobile toast full width */
+        }
+    </style>
+</head>
+<body>
+
+    <header class="top-navbar">
+        <div class="brand-wrap">
+            <div class="brand-logo">
+                <svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+            </div>
+            <div>
+                <div class="brand-title">TOOL TRÍCH XUẤT KQXN</div>
+                <div class="brand-subtitle">Trích xuất & chuẩn hóa Excel</div>
+            </div>
+        </div>
+
+        <nav class="nav-segmented">
+            <button class="seg-btn active" id="tabBtnPdf" onclick="switchTab(event, 'tab-pdf')">
+                <svg class="svg-icon" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                    <line x1="9" y1="21" x2="9" y2="9"></line>
+                </svg>
+                Trích xuất dữ liệu
+            </button>
+            <button class="seg-btn" id="tabBtnHistory" onclick="switchTab(event, 'tab-history')">
+                <svg class="svg-icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Lịch sử lưu
+                <span class="seg-badge" id="historyCountBadge">0</span>
+            </button>
+        </nav>
+
+        <div class="header-controls">
+            <button class="btn-icon" id="darkModeToggle" onclick="toggleDarkMode()" title="Chuyển đổi giao diện Sáng / Tối">
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="main-workspace">
+        <!-- TAB 1: PDF -->
+        <div id="tab-pdf" class="tab-content active">
+            <div class="upload-hero" id="dropZoneHero">
+                <input type="file" id="pdfFileInputHero" accept=".pdf,application/pdf" multiple>
+                <div class="upload-hero-icon">
+                    <svg class="svg-icon svg-icon-xl" viewBox="0 0 24 24">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                </div>
+                <div class="upload-hero-title" id="fileLabelHero">Kéo thả file PDF kết quả xét nghiệm vào đây, hoặc bấm để chọn file</div>
+                <div class="upload-hero-sub">Hỗ trợ tải lên hàng loạt nhiều file PDF cùng lúc • Tự động nhận diện nhóm xét nghiệm & gộp ô Excel</div>
+            </div>
+
+            <div class="workspace-bar" id="compactWorkspaceBar" style="display: none;">
+                <div class="workspace-left">
+                    <label class="btn-upload-compact" title="Tải thêm PDF — dữ liệu mới sẽ được nối tiếp vào bảng hiện tại">
+                        <svg class="svg-icon" viewBox="0 0 24 24">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span id="fileLabelCompact">+ Thêm PDF</span>
+                        <input type="file" id="pdfFileInputCompact" accept=".pdf,application/pdf" multiple>
+                    </label>
+
+                    <button type="button" class="status-pill-btn" id="statusPillBtn" onclick="toggleFileDrawer()" style="display: none;">
+                        <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span id="progressText">Đang xử lý...</span>
+                        <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+
+                    <div class="stat-pill"><span>Bệnh nhân:</span><b id="statPatientsCount">0</b></div>
+                    <div class="stat-pill"><span>Chỉ số:</span><b id="statColumnsCount">0/0</b></div>
+                </div>
+
+                <div class="workspace-actions">
+                    <button class="btn" onclick="openColumnModal(false)">
+                        <svg class="svg-icon" viewBox="0 0 24 24">
+                            <line x1="4" y1="21" x2="4" y2="14"></line>
+                            <line x1="4" y1="10" x2="4" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12" y2="3"></line>
+                            <line x1="20" y1="21" x2="20" y2="16"></line>
+                            <line x1="20" y1="12" x2="20" y2="3"></line>
+                            <line x1="1" y1="14" x2="7" y2="14"></line>
+                            <line x1="9" y1="8" x2="15" y2="8"></line>
+                            <line x1="17" y1="16" x2="23" y2="16"></line>
+                        </svg>
+                        Chọn chỉ số
+                    </button>
+
+                    <button class="btn" onclick="saveToHistory()" title="Lưu bảng kết quả hiện tại vào lịch sử">
+                        <svg class="svg-icon" viewBox="0 0 24 24">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                        </svg>
+                        Lưu lịch sử
+                    </button>
+
+                    <button class="btn btn-danger-ghost" onclick="clearCurrentWorkspace()" title="Xóa toàn bộ dữ liệu đang hiển thị">
+                        <svg class="svg-icon" viewBox="0 0 24 24">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        Xóa bảng
+                    </button>
+
+                    <div class="divider-v"></div>
+
+                    <button class="btn btn-success" onclick="exportExcel()">
+                        <svg class="svg-icon" viewBox="0 0 24 24">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="8" y1="13" x2="16" y2="17"></line>
+                            <line x1="16" y1="13" x2="8" y2="17"></line>
+                        </svg>
+                        Xuất Excel
+                    </button>
+
+                    <button class="btn btn-primary" onclick="copyTableData()">
+                        <svg class="svg-icon" viewBox="0 0 24 24">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        Copy vào Excel
+                    </button>
+                </div>
+            </div>
+
+            <div class="file-drawer" id="progressContainer">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; font-weight: 600; color: var(--text-secondary);">
+                    <span>Chi tiết xử lý tệp PDF</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress-track"><div class="progress-fill" id="progressBarFill"></div></div>
+                <div class="file-grid" id="fileList"></div>
+            </div>
+
+            <div class="table-card">
+                <div class="table-scroll">
+                    <table class="data-table" id="dataTable">
+                        <thead id="tableHead"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+                <div class="table-footer" id="tableFooter" style="display: none;">
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: HISTORY -->
+        <div id="tab-history" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div>
+                    <h2 style="font-size: 16px; font-weight: 700; color: var(--text-main);">Lịch sử phiên làm việc</h2>
+                    <p style="font-size: 12.5px; color: var(--text-muted);">Toàn bộ lịch sử được lưu và chia sẻ giữa các thiết bị qua Firebase Realtime.</p>
+                </div>
+            </div>
+
+            <div class="history-toolbar">
+                <div class="history-stats">
+                    <div class="history-stat-item">
+                        <span class="label">Tổng số phiên</span>
+                        <span class="value" id="historyStatSessions">0</span>
+                    </div>
+                    <div class="history-stat-item">
+                        <span class="label">Tổng bệnh nhân</span>
+                        <span class="value" id="historyStatPatients">0</span>
+                    </div>
+                </div>
+                <div class="history-controls">
+                    <div class="history-search">
+                        <span class="search-icon">
+                            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </span>
+                        <input type="text" id="historySearchInput" placeholder="Tìm theo tên BN, thời gian..." oninput="renderHistory()">
+                    </div>
+                    <select class="history-sort" id="historySortSelect" onchange="renderHistory()">
+                        <option value="newest">Mới nhất trước</option>
+                        <option value="oldest">Cũ nhất trước</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="history-list" id="historyList"></div>
+        </div>
+
+    </main>
+
+    <!-- COLUMN MODAL -->
+    <div class="modal-overlay" id="columnModal">
+        <div class="modal-box">
+            <div class="modal-head">
+                <h3>
+                    <svg class="svg-icon" style="color: var(--primary);" viewBox="0 0 24 24">
+                        <path d="M9 11l3 3L22 4"></path>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                    </svg>
+                    Tùy chỉnh chỉ số cận lâm sàng
+                </h3>
+                <button class="btn-icon" onclick="closeColumnModal()" title="Đóng">
+                    <svg class="svg-icon" viewBox="0 0 24 24">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="settings-toolbar">
+                <div class="preset-group" id="modalPresetRow"></div>
+                <div class="search-box">
+                    <span class="search-icon">
+                        <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </span>
+                    <input type="text" id="modalSearch" placeholder="Tìm nhanh trên tất cả nhóm xét nghiệm..." oninput="handleModalSearch()">
+                    <button type="button" class="search-clear" id="modalSearchClear" onclick="clearModalSearch()">
+                        <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-body">
+                <div class="settings-sidebar" id="modalSidebar"></div>
+                <div class="settings-content-area">
+                    <div class="settings-content-header">
+                        <label>
+                            <input type="checkbox" class="checkbox-custom" id="selectAllInModalCategory" onchange="toggleSelectAllInModalCategory(this)">
+                            <span id="currentModalCategoryTitle">Chọn tất cả nhóm này</span>
+                        </label>
+                        <span style="font-size: 12px; color: var(--text-muted);" id="modalCategorySubInfo">Mẫu kết quả (BN đầu tiên)</span>
+                    </div>
+                    <table class="settings-table">
+                        <tbody id="modalTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="modal-foot">
+                <div style="font-size: 13px; color: var(--text-secondary);">
+                    Đang chọn: <b id="modalSelectedSummary" style="color: var(--primary);">0</b> / <span id="modalTotalCount">0</span> chỉ số
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn" onclick="closeColumnModal()">Đóng</button>
+                    <button class="btn btn-primary" onclick="confirmColumns()">
+                        <svg class="svg-icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Áp dụng thay đổi
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PREVIEW MODAL -->
+    <div class="modal-overlay" id="previewModal">
+        <div class="modal-box" style="max-width: 1000px; height: 78vh;">
+            <div class="modal-head">
+                <h3>
+                    <svg class="svg-icon" style="color: var(--primary);" viewBox="0 0 24 24">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    Chi tiết phiên lưu
+                    <span id="previewTime" style="color: var(--primary); margin-left: 4px; font-weight: 600;"></span>
+                </h3>
+                <button class="btn-icon" onclick="closePreview()" title="Đóng">
+                    <svg class="svg-icon" viewBox="0 0 24 24">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="preview-modal-body">
+                <table class="preview-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 44px; text-align: center;">STT</th>
+                            <th>Họ và tên</th>
+                            <th style="width: 70px; text-align: center;">Tuổi</th>
+                            <th style="width: 90px; text-align: center;">Giới tính</th>
+                            <th style="width: 100px; text-align: center;">Số chỉ số</th>
+                        </tr>
+                    </thead>
+                    <tbody id="previewTableBody"></tbody>
+                </table>
+            </div>
+            <div class="modal-foot">
+                <div style="font-size: 13px; color: var(--text-secondary);">
+                    Tổng cộng: <b id="previewCount" style="color: var(--primary);">0</b> bệnh nhân
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn" onclick="closePreview()">Đóng</button>
+                    <button class="btn btn-primary" onclick="restoreFromPreview()">
+                        <svg class="svg-icon" viewBox="0 0 24 24">
+                            <polyline points="1 4 1 10 7 10"></polyline>
+                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                        </svg>
+                        Khôi phục phiên này
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+    <div id="hiddenCopyDiv" style="position: absolute; left: -9999px; top: 0;"></div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCGjF5HdZ4-UQcjSoT2Qqou8rkGAAYVgY0",
+            authDomain: "trichxuatcls.firebaseapp.com",
+            databaseURL: "https://trichxuatcls-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "trichxuatcls",
+            storageBucket: "trichxuatcls.firebasestorage.app",
+            messagingSenderId: "106071797365",
+            appId: "1:106071797365:web:fffbfe5b2a02bc9107923c"
+        };
+
+        const SHARED_HISTORY_PATH = 'history/shared';
+        const SHARED_HISTORY_DELETED_PATH = 'history/shared_deleted';
+
+        let firebaseDb = null;
+        let firebaseInitState = 'idle';
+        let firebaseSaveTimer = null;
+        let localSaveTimer = null;
+        let sharedHistoryListener = null;
+        let previewHistoryId = null;
+
+        const BASE_COLUMNS = [
+            { key: 'hoTen', label: 'Họ và tên', category: 'Thông tin Hành chính' },
+            { key: 'tuoi', label: 'Tuổi', category: 'Thông tin Hành chính' },
+            { key: 'gioiTinh', label: 'Giới tính', category: 'Thông tin Hành chính' }
+        ];
+
+        const CATEGORY_ORDER = [
+            "Thông tin Hành chính", "Xét nghiệm huyết học", "Xét nghiệm hóa sinh",
+            "Xét nghiệm Vi sinh", "Xét nghiệm nước tiểu", "Xét nghiệm khác"
+        ];
+
+        let dynamicTestCols = [];
+        let activeColumns = JSON.parse(localStorage.getItem('vox_all_active_columns')) || [];
+        let currentData = [];
+        let currentModalCat = "Thông tin Hành chính";
+        let pendingDeleteHistoryId = null;
+
+        const ICON_STAR = `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+        const ICON_BLOOD = `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>`;
+        const ICON_FLASK = `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><path d="M10 2v7.31"></path><path d="M14 9.3V1.99"></path><path d="M8.5 2h7"></path><path d="M14 9.3a6.5 6.5 0 1 1-4 0"></path><path d="M5.58 16.5h12.85"></path></svg>`;
+        const ICON_CHECK_ALL = `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>`;
+        const ICON_TRASH = `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+
+        /* ===== KEY ENCODING ===== */
+        function encodeKey(k) {
+            if (k === null || k === undefined) return 'k_';
+            const s = String(k).replace(/\./g, '__DOT__').replace(/#/g, '__HASH__').replace(/\$/g, '__DOLLAR__').replace(/\//g, '__SLASH__').replace(/\[/g, '__LBRACKET__').replace(/\]/g, '__RBRACKET__');
+            return 'k_' + s;
+        }
+        function decodeKey(k) {
+            if (k === null || k === undefined) return k;
+            let s = String(k);
+            if (s.startsWith('k_')) s = s.slice(2);
+            return s.replace(/__DOT__/g, '.').replace(/__HASH__/g, '#').replace(/__DOLLAR__/g, '$').replace(/__SLASH__/g, '/').replace(/__LBRACKET__/g, '[').replace(/__RBRACKET__/g, ']');
+        }
+        function sanitizeDataForFirebase(data) {
+            if (!Array.isArray(data)) return [];
+            return data.map(row => {
+                const newRow = { hoTen: row.hoTen || '', tuoi: row.tuoi || '', gioiTinh: row.gioiTinh || '', tests: {}, testCategories: {} };
+                if (row.tests) Object.keys(row.tests).forEach(k => { newRow.tests[encodeKey(k)] = row.tests[k]; });
+                if (row.testCategories) Object.keys(row.testCategories).forEach(k => { newRow.testCategories[encodeKey(k)] = row.testCategories[k]; });
+                return newRow;
+            });
+        }
+        function desanitizeDataFromFirebase(data) {
+            let arr = data;
+            if (!arr) return [];
+            if (!Array.isArray(arr)) arr = Object.keys(arr).sort((a, b) => Number(a) - Number(b)).map(k => arr[k]);
+            return arr.filter(r => r !== null && r !== undefined).map(row => {
+                const newRow = { hoTen: row.hoTen || '', tuoi: row.tuoi || '', gioiTinh: row.gioiTinh || '', tests: {}, testCategories: {} };
+                if (row.tests && typeof row.tests === 'object') Object.keys(row.tests).forEach(k => { newRow.tests[decodeKey(k)] = row.tests[k]; });
+                if (row.testCategories && typeof row.testCategories === 'object') Object.keys(row.testCategories).forEach(k => { newRow.testCategories[decodeKey(k)] = row.testCategories[k]; });
+                return newRow;
+            });
+        }
+
+        /* ===== FIREBASE HELPERS ===== */
+        function getDeviceId() {
+            let id = localStorage.getItem('vox_device_id');
+            if (!id) { id = 'dev_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now().toString(36); localStorage.setItem('vox_device_id', id); }
+            return id;
+        }
+        function initFirebase() {
+            try {
+                if (typeof firebase === 'undefined' || !firebase.initializeApp) { firebaseInitState = 'error'; return; }
+                if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+                firebaseDb = firebase.database();
+                firebaseInitState = 'ready';
+                loadFromFirebase();
+                loadHistoryFromFirebase();
+                listenSharedHistory();
+            } catch (e) { firebaseInitState = 'error'; }
+        }
+        function scheduleLocalSave(delay = 200) {
+            if (localSaveTimer) clearTimeout(localSaveTimer);
+            localSaveTimer = setTimeout(() => {
+                try { localStorage.setItem('vox_current_data', JSON.stringify(currentData)); } catch (e) {}
+            }, delay);
+        }
+        function saveImmediatelyToLocal() {
+            try { localStorage.setItem('vox_current_data', JSON.stringify(currentData)); } catch (e) {}
+        }
+        function scheduleFirebaseSync(delay = 1000) {
+            if (firebaseInitState !== 'ready' || !firebaseDb) return;
+            if (firebaseSaveTimer) clearTimeout(firebaseSaveTimer);
+            firebaseSaveTimer = setTimeout(syncToFirebase, delay);
+        }
+        function syncToFirebase() {
+            if (firebaseInitState !== 'ready' || !firebaseDb) return;
+            try {
+                const deviceId = getDeviceId();
+                const ref = firebaseDb.ref('workspaces/' + deviceId);
+                const payload = { currentData: sanitizeDataForFirebase(currentData), activeColumns: activeColumns, updatedAt: Date.now(), deviceId: deviceId };
+                ref.set(payload).catch(err => console.error('[Firebase] Sync failed:', err));
+            } catch (e) { console.error('[Firebase] Sync exception:', e); }
+        }
+        function loadFromFirebase() {
+            if (!firebaseDb) return;
+            try {
+                const deviceId = getDeviceId();
+                const ref = firebaseDb.ref('workspaces/' + deviceId);
+                ref.once('value').then(snapshot => {
+                    const val = snapshot.val();
+                    if (val && val.currentData) {
+                        const restored = desanitizeDataFromFirebase(val.currentData);
+                        if (restored.length > 0) {
+                            if (currentData.length === 0) {
+                                currentData = restored;
+                                if (Array.isArray(val.activeColumns) && val.activeColumns.length > 0) activeColumns = val.activeColumns;
+                                rebuildDynamicColumns();
+                                if (!activeColumns || activeColumns.length === 0) activeColumns = getDefaultColumns();
+                                saveImmediatelyToLocal();
+                                renderTable();
+                                showToast("Đã khôi phục dữ liệu từ Cloud!");
+                            } else scheduleFirebaseSync(0);
+                            return;
+                        }
+                    }
+                    if (currentData.length > 0) scheduleFirebaseSync(0);
+                }).catch(err => console.error(err));
+            } catch (e) { console.error(e); }
+        }
+
+        /* ===== SHARED HISTORY ===== */
+        function saveHistoryToFirebase(record) {
+            if (firebaseInitState !== 'ready' || !firebaseDb) return Promise.reject(new Error('Firebase not ready'));
+            const data = { time: record.time, count: record.count, data: sanitizeDataForFirebase(record.data || []) };
+            return firebaseDb.ref(SHARED_HISTORY_PATH + '/' + record.id).set(data);
+        }
+        function deleteHistoryFromFirebase(id) {
+            if (firebaseInitState !== 'ready' || !firebaseDb) return Promise.reject(new Error('Firebase not ready'));
+            const updates = {};
+            updates[SHARED_HISTORY_PATH + '/' + id] = null;
+            updates[SHARED_HISTORY_DELETED_PATH + '/' + id] = Date.now();
+            return firebaseDb.ref().update(updates);
+        }
+        function mergeHistoryFromCloud(cloud, deleted) {
+            const localHistory = JSON.parse(localStorage.getItem('vox_history')) || [];
+            const tombstoned = new Set(Object.keys(deleted || {}).map(k => Number(k)).filter(n => !isNaN(n) && n > 0));
+            const merged = new Map();
+            Object.keys(cloud || {}).forEach(k => {
+                const id = Number(k);
+                if (!id || tombstoned.has(id)) return;
+                const item = cloud[k] || {};
+                merged.set(id, { id: id, time: item.time || '', count: item.count || 0, data: desanitizeDataFromFirebase(item.data || []) });
+            });
+            localHistory.forEach(h => {
+                if (!tombstoned.has(h.id) && !merged.has(h.id)) merged.set(h.id, h);
+            });
+            return Array.from(merged.values()).sort((a, b) => b.id - a.id);
+        }
+        function loadHistoryFromFirebase() {
+            if (!firebaseDb) return;
+            firebaseDb.ref('history').once('value').then(snap => {
+                const val = snap.val() || {};
+                const merged = mergeHistoryFromCloud(val.shared || {}, val.shared_deleted || {});
+                const localHistory = JSON.parse(localStorage.getItem('vox_history')) || [];
+                if (JSON.stringify(merged) !== JSON.stringify(localHistory)) {
+                    localStorage.setItem('vox_history', JSON.stringify(merged));
+                    renderHistory();
+                }
+                const cloudIds = new Set(Object.keys(val.shared || {}).map(k => Number(k)));
+                const toPush = merged.filter(h => !cloudIds.has(h.id) && !(val.shared_deleted && val.shared_deleted[h.id]));
+                if (toPush.length > 0) {
+                    const updates = {};
+                    toPush.forEach(h => {
+                        updates[SHARED_HISTORY_PATH + '/' + h.id] = { time: h.time, count: h.count, data: sanitizeDataForFirebase(h.data || []) };
+                    });
+                    firebaseDb.ref().update(updates).catch(err => console.error(err));
+                }
+            }).catch(err => console.error(err));
+        }
+        function listenSharedHistory() {
+            if (!firebaseDb) return;
+            const ref = firebaseDb.ref('history');
+            if (sharedHistoryListener) ref.off('value', sharedHistoryListener);
+            sharedHistoryListener = ref.on('value', snap => {
+                const val = snap.val() || {};
+                const merged = mergeHistoryFromCloud(val.shared || {}, val.shared_deleted || {});
+                const localHistory = JSON.parse(localStorage.getItem('vox_history')) || [];
+                if (JSON.stringify(merged) !== JSON.stringify(localHistory)) {
+                    localStorage.setItem('vox_history', JSON.stringify(merged));
+                    renderHistory();
+                }
+            }, err => console.error(err));
+        }
+        function persistChanges(immediate = false) {
+            if (immediate) { saveImmediatelyToLocal(); scheduleFirebaseSync(0); }
+            else { scheduleLocalSave(200); scheduleFirebaseSync(1000); }
+        }
+
+        /* ===== BOOTSTRAP ===== */
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('vox_dark_mode') === 'true') { document.body.classList.add('dark-mode'); updateDarkModeIcon(true); }
+            if (activeColumns.length === 0) activeColumns = BASE_COLUMNS.map(c => c.key);
+            try {
+                const savedData = JSON.parse(localStorage.getItem('vox_current_data') || '[]');
+                if (Array.isArray(savedData) && savedData.length > 0) {
+                    currentData = savedData;
+                    rebuildDynamicColumns();
+                    if (!activeColumns || activeColumns.length === 0) activeColumns = getDefaultColumns();
+                }
+            } catch (e) {}
+            renderTable();
+            renderHistory();
+            setupDragAndDrop();
+            initFirebase();
+        });
+
+        function updateDarkModeIcon(isDark) {
+            document.getElementById('darkModeToggle').innerHTML = isDark
+                ? `<svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`
+                : `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+        }
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('vox_dark_mode', document.body.classList.contains('dark-mode'));
+            updateDarkModeIcon(document.body.classList.contains('dark-mode'));
+        }
+        function switchTab(evt, tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.seg-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
+        }
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.innerHTML = (isError ? '⚠️ ' : '✅ ') + message;
+            toast.className = "show";
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+        function toggleFileDrawer() { document.getElementById('progressContainer').classList.toggle('open'); }
+        function clearCurrentWorkspace() {
+            currentData = []; dynamicTestCols = [];
+            document.getElementById('progressContainer').classList.remove('open');
+            document.getElementById('statusPillBtn').style.display = 'none';
+            document.getElementById('pdfFileInputHero').value = '';
+            document.getElementById('pdfFileInputCompact').value = '';
+            renderTable();
+            persistChanges(true);
+            showToast("Đã làm mới bảng dữ liệu!");
+        }
+        function getDefaultColumns() {
+            let defaults = [...BASE_COLUMNS.map(c => c.key)];
+            dynamicTestCols.forEach(c => {
+                let cat = (c.category || "").toLowerCase().trim();
+                let label = (c.label || "").toLowerCase().trim();
+                if (cat.includes("hóa sinh") || cat.includes("vi sinh")) defaults.push(c.key);
+                else if (cat.includes("huyết học")) {
+                    let targetLabels = ["số lượng hồng cầu", "huyết sắc tố", "số lượng tiểu cầu", "số lượng bạch cầu"];
+                    if (targetLabels.some(t => label.includes(t))) defaults.push(c.key);
+                }
+                else if (cat.includes("nước tiểu")) {
+                    if (label === "tỷ trọng" || label === "ph") defaults.push(c.key);
+                }
+            });
+            return [...new Set(defaults)];
+        }
+
+        /* ===== COLUMN MODAL ===== */
+        function openColumnModal(isPostUpload = false) {
+            const allCols = getAllColumns();
+            document.getElementById('modalTotalCount').innerText = allCols.length;
+            document.getElementById('modalSearch').value = '';
+            document.getElementById('modalSearchClear').style.display = 'none';
+            renderFullModalUI();
+            document.getElementById('columnModal').classList.add('active');
+            document.body.classList.add('modal-open');
+        }
+        function closeColumnModal() {
+            document.getElementById('columnModal').classList.remove('active');
+            document.body.classList.remove('modal-open');
+            renderTable();
+        }
+        function confirmColumns() {
+            closeColumnModal();
+            renderTable();
+            persistChanges(true);
+            showToast("Đã cập nhật danh sách chỉ số hiển thị!");
+        }
+        function renderPresets() {
+            const el = document.getElementById('modalPresetRow');
+            if (!el) return;
+            el.innerHTML = `
+                <span class="preset-label">Chọn nhanh:</span>
+                <button type="button" class="btn-preset" onclick="applyPreset('default')">${ICON_STAR} Mặc định</button>
+                <button type="button" class="btn-preset" onclick="applyPreset('ctm')">${ICON_BLOOD} Huyết học</button>
+                <button type="button" class="btn-preset" onclick="applyPreset('shm')">${ICON_FLASK} Sinh hóa</button>
+                <button type="button" class="btn-preset" onclick="applyPreset('all')">${ICON_CHECK_ALL} Tất cả</button>
+                <button type="button" class="btn-preset clear" onclick="applyPreset('clear')">${ICON_TRASH} Bỏ chọn</button>
+            `;
+        }
+        function applyPreset(presetType) {
+            if (presetType === 'clear') activeColumns = [];
+            else if (presetType === 'all') activeColumns = getAllColumns().map(c => c.key);
+            else if (presetType === 'default') activeColumns = getDefaultColumns();
+            else if (presetType === 'ctm') {
+                activeColumns = [...BASE_COLUMNS.map(c => c.key)];
+                dynamicTestCols.forEach(c => {
+                    if (c.category.toLowerCase().includes("huyết học") || /(hồng cầu|huyết sắc tố|bạch cầu|tiểu cầu|lympho|mono|neut|eos|baso|hematocrit|mcv|mch|mchc|rdw|mpv|pct|pdw)/i.test(c.label)) activeColumns.push(c.key);
+                });
+            } else if (presetType === 'shm') {
+                activeColumns = [...BASE_COLUMNS.map(c => c.key)];
+                dynamicTestCols.forEach(c => { if (c.category.toLowerCase().includes("hóa sinh")) activeColumns.push(c.key); });
+            }
+            activeColumns = [...new Set(activeColumns)];
+            localStorage.setItem('vox_all_active_columns', JSON.stringify(activeColumns));
+            renderModalSidebar(); renderModalContent(); renderTable();
+            scheduleFirebaseSync();
+        }
+        function getAllCategories() {
+            let cats = ["Thông tin Hành chính"];
+            dynamicTestCols.forEach(col => { if (!cats.includes(col.category)) cats.push(col.category); });
+            cats.sort((a, b) => {
+                let idxA = CATEGORY_ORDER.indexOf(a), idxB = CATEGORY_ORDER.indexOf(b);
+                if (idxA === -1) idxA = 99; if (idxB === -1) idxB = 99;
+                return idxA - idxB;
+            });
+            return cats;
+        }
+        function renderFullModalUI() { renderPresets(); renderModalSidebar(); renderModalContent(); }
+        function renderModalSidebar() {
+            let cats = getAllCategories();
+            let sidebar = document.getElementById('modalSidebar');
+            if (!cats.includes(currentModalCat)) currentModalCat = cats[0];
+            sidebar.innerHTML = cats.map(cat => {
+                let cols = cat === "Thông tin Hành chính" ? BASE_COLUMNS : dynamicTestCols.filter(c => c.category === cat);
+                let totalCount = cols.length;
+                let selectedCount = cols.filter(c => activeColumns.includes(c.key)).length;
+                let isActive = (cat === currentModalCat) ? 'active' : '';
+                return `<div class="sidebar-item ${isActive}" onclick="changeModalCat('${cat}')">
+                    <span style="overflow:hidden; text-overflow:ellipsis;">${cat}</span>
+                    <span class="badge">${selectedCount}/${totalCount}</span>
+                </div>`;
+            }).join('');
+            const allCols = getAllColumns();
+            document.getElementById('modalSelectedSummary').innerText = allCols.filter(c => activeColumns.includes(c.key)).length;
+            document.getElementById('modalTotalCount').innerText = allCols.length;
+        }
+        function changeModalCat(cat) {
+            currentModalCat = cat;
+            document.getElementById('modalSearch').value = '';
+            document.getElementById('modalSearchClear').style.display = 'none';
+            renderModalSidebar(); renderModalContent();
+        }
+        function renderModalContent() {
+            const keyword = document.getElementById('modalSearch').value.toLowerCase().trim();
+            const isSearching = keyword.length > 0;
+            let cols = [];
+            if (isSearching) {
+                document.getElementById('currentModalCategoryTitle').innerText = `Kết quả tìm kiếm cho "${keyword}"`;
+                cols = getAllColumns().filter(c => c.label.toLowerCase().includes(keyword) || (c.category && c.category.toLowerCase().includes(keyword)));
+            } else {
+                document.getElementById('currentModalCategoryTitle').innerText = currentModalCat;
+                cols = currentModalCat === "Thông tin Hành chính" ? BASE_COLUMNS : dynamicTestCols.filter(c => c.category === currentModalCat);
+            }
+            let tbody = document.getElementById('modalTableBody');
+            if (cols.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding: 36px; color: var(--text-muted);">Không tìm thấy chỉ số nào phù hợp.</td></tr>`;
+                document.getElementById('selectAllInModalCategory').checked = false;
+                return;
+            }
+            tbody.innerHTML = cols.map(col => {
+                let isChecked = activeColumns.includes(col.key);
+                let sampleVal = (col.key === 'hoTen' || col.key === 'tuoi' || col.key === 'gioiTinh') ? (currentData[0] ? currentData[0][col.key] : '-') : (col.sampleResult || '-');
+                let catTag = isSearching ? `<span style="font-size:11px; color:var(--text-muted); background:var(--bg-subtle); border:1px solid var(--border); padding:1px 6px; border-radius:4px; margin-left:8px;">${col.category}</span>` : '';
+                return `<tr class="data-row ${isChecked ? 'is-selected' : ''}" onclick="toggleRowClick(event, '${col.key}')">
+                    <td class="col-check"><input type="checkbox" class="checkbox-custom" data-key="${col.key}" ${isChecked ? 'checked' : ''} onchange="toggleColumn('${col.key}', this)"></td>
+                    <td class="col-name">${col.label}${catTag}</td>
+                    <td class="col-result">${sampleVal}</td>
+                </tr>`;
+            }).join('');
+            updateModalSelectAllCheckbox(cols);
+        }
+        function toggleRowClick(event, key) {
+            if (event.target.tagName.toLowerCase() === 'input') return;
+            const cb = event.currentTarget.querySelector('input[type="checkbox"]');
+            if (cb) { cb.checked = !cb.checked; toggleColumn(key, cb); }
+        }
+        function handleModalSearch() {
+            const val = document.getElementById('modalSearch').value;
+            document.getElementById('modalSearchClear').style.display = val.length > 0 ? 'block' : 'none';
+            renderModalContent();
+        }
+        function clearModalSearch() {
+            document.getElementById('modalSearch').value = '';
+            document.getElementById('modalSearchClear').style.display = 'none';
+            renderModalContent();
+        }
+        function toggleSelectAllInModalCategory(masterCb) {
+            let isChecked = masterCb.checked;
+            const keyword = document.getElementById('modalSearch').value.toLowerCase().trim();
+            let cols = keyword.length > 0
+                ? getAllColumns().filter(c => c.label.toLowerCase().includes(keyword) || (c.category && c.category.toLowerCase().includes(keyword)))
+                : (currentModalCat === "Thông tin Hành chính" ? BASE_COLUMNS : dynamicTestCols.filter(c => c.category === currentModalCat));
+            cols.forEach(col => {
+                if (isChecked) { if (!activeColumns.includes(col.key)) activeColumns.push(col.key); }
+                else activeColumns = activeColumns.filter(k => k !== col.key);
+            });
+            localStorage.setItem('vox_all_active_columns', JSON.stringify(activeColumns));
+            renderModalSidebar(); renderModalContent(); renderTable();
+            scheduleFirebaseSync();
+        }
+        function updateModalSelectAllCheckbox(currentColsList) {
+            let cols = currentColsList || (currentModalCat === "Thông tin Hành chính" ? BASE_COLUMNS : dynamicTestCols.filter(c => c.category === currentModalCat));
+            document.getElementById('selectAllInModalCategory').checked = cols.length > 0 && cols.every(col => activeColumns.includes(col.key));
+        }
+        function toggleColumn(key, checkbox) {
+            if (checkbox.checked) { if (!activeColumns.includes(key)) activeColumns.push(key); }
+            else activeColumns = activeColumns.filter(k => k !== key);
+            localStorage.setItem('vox_all_active_columns', JSON.stringify(activeColumns));
+            const row = checkbox.closest('tr');
+            if (row) row.classList.toggle('is-selected', checkbox.checked);
+            renderModalSidebar(); updateModalSelectAllCheckbox(); renderTable();
+            scheduleFirebaseSync();
+        }
+
+        /* ===== DATA RECONSTRUCTION ===== */
+        function rebuildDynamicColumns() {
+            let testKeys = new Set();
+            currentData.forEach(row => { if (row.tests) Object.keys(row.tests).forEach(k => testKeys.add(k)); });
+            dynamicTestCols = Array.from(testKeys).map(k => {
+                let cat = "Xét nghiệm khác";
+                let sample = "-";
+                for (let r of currentData) if (r.testCategories && r.testCategories[k]) { cat = r.testCategories[k]; break; }
+                for (let r of currentData) if (r.tests && r.tests[k]) { sample = r.tests[k]; break; }
+                return { key: `test_${k}`, label: k, category: cat, sampleResult: sample };
+            });
+        }
+
+        /* ===== PDF PROCESSING ===== */
+        function setupDragAndDrop() {
+            const heroInput = document.getElementById('pdfFileInputHero');
+            const compactInput = document.getElementById('pdfFileInputCompact');
+            const heroZone = document.getElementById('dropZoneHero');
+            const compactBar = document.getElementById('compactWorkspaceBar');
+            heroInput.addEventListener('change', function (e) {
+                const files = Array.from(e.target.files || []);
+                e.target.value = '';
+                if (files.length > 0) processBatchPDF(files, false);
+            });
+            compactInput.addEventListener('change', function (e) {
+                const files = Array.from(e.target.files || []);
+                e.target.value = '';
+                if (files.length > 0) processBatchPDF(files, true);
+            });
+            [heroZone, compactBar].forEach(zone => {
+                zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+                zone.addEventListener('dragleave', (e) => { e.preventDefault(); zone.classList.remove('dragover'); });
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('dragover');
+                    const pdfFiles = Array.from(e.dataTransfer.files || []).filter(f => f.type === "application/pdf" || f.name.toLowerCase().endsWith('.pdf'));
+                    if (pdfFiles.length > 0) processBatchPDF(pdfFiles, zone === compactBar);
+                    else showToast("Vui lòng chọn file định dạng PDF!", true);
+                });
+            });
+        }
+        async function extractDataFromSinglePDF(file) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullTextLines = [];
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    const textContent = await page.getTextContent();
+                    let lines = {};
+                    textContent.items.forEach(item => {
+                        let y = Math.round(item.transform[5]);
+                        if (!lines[y]) lines[y] = [];
+                        lines[y].push(item);
+                    });
+                    let sortedY = Object.keys(lines).map(Number).sort((a, b) => b - a);
+                    sortedY.forEach(y => {
+                        let lineStr = lines[y].sort((a, b) => a.transform[4] - b.transform[4]).map(item => item.str).join(' ').replace(/\s+/g, ' ').trim();
+                        if (lineStr) fullTextLines.push(lineStr);
+                    });
+                }
+                let data = { hoTen: '', tuoi: '', gioiTinh: '', tests: {}, testCategories: {} };
+                let currentCategory = "Xét nghiệm khác";
+                fullTextLines.forEach(line => {
+                    let catMatch = line.match(/^(Xét nghiệm\s+(?:huyết học|Vi sinh|hóa sinh|nước tiểu|đông máu|miễn dịch).*)/i);
+                    if (catMatch) { currentCategory = catMatch[1].replace(/\(.*?\)/g, '').trim(); return; }
+                    if (line.match(/^(Huyết học|Hóa sinh|Nước tiểu|Vi sinh)/i)) { currentCategory = "Xét nghiệm " + line.replace(/\(.*?\)/g, '').trim(); return; }
+                    if (line.includes('Họ và tên:')) {
+                        let mTen = line.match(/Họ và tên:\s*(.*?)\s*Tuổi:/i); if (mTen) data.hoTen = mTen[1].trim();
+                        let mTuoi = line.match(/Tuổi:\s*(\d+)/i); if (mTuoi) data.tuoi = mTuoi[1].trim();
+                        let mGT = line.match(/Giới tính:\s*(Nam|Nữ)/i); if (mGT) data.gioiTinh = mGT[1].trim();
+                    }
+                    if (line.match(/^(STT|Tên xét nghiệm|Xét nghiệm|Ngày|Trang|Kết quả in đậm)/i)) return;
+                    if (line.includes('KHOA XÉT NGHIỆM') || line.includes('Người thực hiện')) return;
+                    let cleanLine = line.replace(/^\s+|\s+$/g, '');
+                    let resultPattern = /((?:\+\/-|\+|\-)(?:\s*(?:neg|norm|[\d.,]+[A-Za-z%\/\^0-9]*))?|[\d.,]+[A-Za-z%\/\^0-9]*|Âm\s*tính|Dương\s*tính|neg|norm(?:\s*[\d.,]+[A-Za-z%\/\^0-9]*)?|Bình\s*thường|Không\s*phát\s*hiện|\(\+\)|\(-\))/i;
+                    let match = cleanLine.match(new RegExp(`^(\\d+)\\s+(.*?)\\s+${resultPattern.source}\\s+(.*)$`, 'i'));
+                    if (match) {
+                        let testName = match[2].trim().replace(/\s+/g, ' ');
+                        let testResult = match[3].trim();
+                        if (!data.tests[testName]) { data.tests[testName] = testResult; data.testCategories[testName] = currentCategory; }
+                    }
+                });
+                return data;
+            } catch (error) { throw new Error("Không thể đọc file PDF này."); }
+        }
+        async function processBatchPDF(files, append = false) {
+            const statusPillBtn = document.getElementById('statusPillBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const barFill = document.getElementById('progressBarFill');
+            const progressText = document.getElementById('progressText');
+            const progressPercent = document.getElementById('progressPercent');
+            const fileListEl = document.getElementById('fileList');
+            statusPillBtn.style.display = 'inline-flex';
+            progressContainer.classList.add('open');
+            barFill.style.width = '0%';
+            progressPercent.innerText = '0%';
+            fileListEl.innerHTML = '';
+            currentData = append ? [...currentData] : [];
+            let validFiles = Array.from(files).filter(f => f.type === "application/pdf" || f.name.toLowerCase().endsWith('.pdf'));
+            let total = validFiles.length, successCount = 0;
+            for (let i = 0; i < total; i++) {
+                let file = validFiles[i];
+                progressText.innerText = append ? `Đang thêm (${i + 1}/${total})` : `Đang đọc (${i + 1}/${total})`;
+                let fileItemId = `file-${i}`;
+                fileListEl.innerHTML += `<div class="file-item" id="${fileItemId}"><span class="file-item-name" title="${file.name}">${file.name}</span><span class="status-text" style="color:var(--text-muted); font-weight:500;">Đang chờ...</span></div>`;
+                let fileStatusEl = document.querySelector(`#${fileItemId} .status-text`);
+                try {
+                    fileStatusEl.innerText = 'Đang đọc...';
+                    let data = await extractDataFromSinglePDF(file);
+                    currentData.push(data);
+                    successCount++;
+                    fileStatusEl.innerText = 'Hoàn tất';
+                    fileStatusEl.style.color = 'var(--success)';
+                } catch (error) {
+                    fileStatusEl.innerText = 'Lỗi đọc';
+                    fileStatusEl.style.color = 'var(--danger)';
+                }
+                let percent = Math.round(((i + 1) / total) * 100);
+                barFill.style.width = `${percent}%`;
+                progressPercent.innerText = `${percent}%`;
+            }
+            progressText.innerText = `Hoàn tất ${successCount}/${total} file`;
+            setTimeout(() => { progressContainer.classList.remove('open'); }, 900);
+            rebuildDynamicColumns();
+            if (!append || activeColumns.length === 0) activeColumns = getDefaultColumns();
+            localStorage.setItem('vox_all_active_columns', JSON.stringify(activeColumns));
+            renderTable();
+            if (currentData.length > 0) openColumnModal(true);
+            persistChanges(true);
+            if (append && successCount > 0) showToast(`Đã nối tiếp ${successCount} file PDF (tổng ${currentData.length} bệnh nhân).`);
+        }
+
+        /* ===== TABLE RENDER ===== */
+        function getAllColumns() { return [...BASE_COLUMNS, ...dynamicTestCols]; }
+        function getCategoryAccentClass(catName) {
+            const c = (catName || "").toLowerCase();
+            if (c.includes("hành chính")) return "cat-hanh-chinh";
+            if (c.includes("huyết học")) return "cat-huyet-hoc";
+            if (c.includes("hóa sinh")) return "cat-hoa-sinh";
+            if (c.includes("nước tiểu")) return "cat-nuoc-tieu";
+            if (c.includes("vi sinh")) return "cat-vi-sinh";
+            return "cat-khac";
+        }
+        function updateWorkspaceStats() {
+            const allCols = getAllColumns();
+            const activeCount = allCols.filter(c => activeColumns.includes(c.key)).length;
+            document.getElementById('statPatientsCount').innerText = currentData.length;
+            document.getElementById('statColumnsCount').innerText = `${activeCount}/${allCols.length}`;
+            const heroZone = document.getElementById('dropZoneHero');
+            const compactBar = document.getElementById('compactWorkspaceBar');
+            const tableFooter = document.getElementById('tableFooter');
+            if (currentData.length > 0) { heroZone.style.display = 'none'; compactBar.style.display = 'flex'; tableFooter.style.display = 'flex'; }
+            else { heroZone.style.display = 'flex'; compactBar.style.display = 'none'; tableFooter.style.display = 'none'; }
+        }
+        function renderTable() {
+            updateWorkspaceStats();
+            const thead = document.getElementById('tableHead');
+            const tbody = document.getElementById('tableBody');
+            if (currentData.length === 0) {
+                thead.innerHTML = '';
+                tbody.innerHTML = `<tr><td colspan="10" class="empty-state">
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
+                        <svg class="svg-icon" style="width:42px; height:42px; opacity:0.25;" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                            <line x1="9" y1="21" x2="9" y2="9"></line>
+                        </svg>
+                        <div style="font-weight:600; color:var(--text-secondary); font-size:14px;">Bảng dữ liệu đang trống</div>
+                        <div style="font-size:12.5px; color:var(--text-muted); max-width:420px; margin:0 auto; text-align:center; line-height:1.6;">Tải lên một hoặc nhiều tệp PDF kết quả xét nghiệm ở khung phía trên để hệ thống tự động bóc tách và lập bảng chuẩn hóa.</div>
+                    </div>
+                </td></tr>`;
+                return;
+            }
+            let activeCols = getSortedActiveCols();
+            if (activeCols.length === 0) {
+                thead.innerHTML = '';
+                tbody.innerHTML = `<tr><td colspan="10" class="empty-state">Chưa có cột chỉ số nào được chọn. Bấm <button class="btn" style="display:inline-flex; margin:0 4px;" onclick="openColumnModal(false)">Chọn chỉ số</button> để bật các cột cần hiển thị.</td></tr>`;
+                return;
+            }
+            let groupedCols = [], currentGroup = null;
+            activeCols.forEach(col => {
+                let catName = col.category || 'Thông tin Hành chính';
+                if (!currentGroup || currentGroup.name !== catName) {
+                    currentGroup = { name: catName, count: 0, accentClass: getCategoryAccentClass(catName) };
+                    groupedCols.push(currentGroup);
+                }
+                currentGroup.count++;
+            });
+            let row1HTML = groupedCols.map(g => `<th colspan="${g.count}" class="${g.accentClass}">${g.name}</th>`).join('');
+            let row2HTML = activeCols.map(c => `<th>${c.label}</th>`).join('');
+            thead.innerHTML = `<tr class="tier-group">${row1HTML}</tr><tr class="tier-indicator">${row2HTML}</tr>`;
+            tbody.innerHTML = currentData.map((row, rowIndex) => {
+                let tds = activeCols.map((col) => {
+                    let val = '', cellClass = '';
+                    if (col.key.startsWith('test_')) {
+                        let actualKey = col.key.replace('test_', '');
+                        val = row.tests[actualKey] || '';
+                        cellClass = 'col-data';
+                    } else {
+                        val = row[col.key] || '';
+                        if (col.key !== 'hoTen') cellClass = 'col-data';
+                    }
+                    return `<td class="${cellClass}" contenteditable="true" spellcheck="false" data-row="${rowIndex}" data-key="${col.key}" oninput="updateData(${rowIndex}, '${col.key}', this.innerText)">${val}</td>`;
+                }).join('');
+                return `<tr>${tds}</tr>`;
+            }).join('');
+        }
+        function updateData(rowIndex, key, newValue) {
+            if (key.startsWith('test_')) {
+                let actualKey = key.replace('test_', '');
+                currentData[rowIndex].tests[actualKey] = newValue;
+            } else currentData[rowIndex][key] = newValue;
+            persistChanges(false);
+        }
+
+        /* ===== EXPORT & COPY ===== */
+        function getSortedActiveCols() {
+            let allCols = getAllColumns();
+            let activeCols = allCols.filter(c => activeColumns.includes(c.key));
+            activeCols.sort((a, b) => {
+                let catA = a.category || 'Thông tin Hành chính';
+                let catB = b.category || 'Thông tin Hành chính';
+                let idxA = CATEGORY_ORDER.indexOf(catA), idxB = CATEGORY_ORDER.indexOf(catB);
+                if (idxA === -1) idxA = 99; if (idxB === -1) idxB = 99;
+                return idxA - idxB;
+            });
+            return activeCols;
+        }
+        function getTableDataAsArray() {
+            let activeCols = getSortedActiveCols();
+            let rowGroups = [], rowHeaders = [];
+            activeCols.forEach(col => {
+                rowGroups.push(col.category || 'Thông tin Hành chính');
+                rowHeaders.push(col.label);
+            });
+            let rows = currentData.map(row => activeCols.map(col => {
+                if (col.key.startsWith('test_')) {
+                    let k = col.key.replace('test_', '');
+                    return row.tests[k] || '';
+                } else return row[col.key] || '';
+            }));
+            return [rowGroups, rowHeaders, ...rows];
+        }
+        function copyTableData() {
+            if (currentData.length === 0) return showToast("Không có dữ liệu để copy!", true);
+            let activeCols = getSortedActiveCols();
+            if (activeCols.length === 0) return showToast("Vui lòng chọn ít nhất 1 cột chỉ số!", true);
+            let groupedCols = [], currentGroup = null;
+            activeCols.forEach(col => {
+                let catName = col.category || 'Thông tin Hành chính';
+                if (!currentGroup || currentGroup.name !== catName) { currentGroup = { name: catName, count: 0 }; groupedCols.push(currentGroup); }
+                currentGroup.count++;
+            });
+            const FONT_STYLE = "font-family: 'Times New Roman', Times, serif; font-size: 11pt;";
+            let html = `<table border="1" cellspacing="0" cellpadding="0" style="border-collapse: collapse; text-align: center; ${FONT_STYLE}">`;
+            html += `<tr>`;
+            groupedCols.forEach(g => { html += `<th colspan="${g.count}" style="background-color: #f1f5f9; padding: 8px; ${FONT_STYLE} font-weight: bold; border: 1px solid #cbd5e1; text-transform: uppercase;">${g.name}</th>`; });
+            html += `</tr><tr>`;
+            activeCols.forEach(c => { html += `<th style="background-color: #ffffff; padding: 8px; ${FONT_STYLE} font-weight: bold; border: 1px solid #cbd5e1;">${c.label}</th>`; });
+            html += `</tr>`;
+            currentData.forEach(row => {
+                html += `<tr>`;
+                activeCols.forEach(col => {
+                    let val = '';
+                    if (col.key.startsWith('test_')) {
+                        let actualKey = col.key.replace('test_', '');
+                        val = row.tests[actualKey] || '';
+                    } else val = row[col.key] || '';
+                    let align = col.key === 'hoTen' ? 'left' : 'center';
+                    html += `<td style="padding: 6px 12px; border: 1px solid #cbd5e1; text-align: ${align}; ${FONT_STYLE}">${val}</td>`;
+                });
+                html += `</tr>`;
+            });
+            html += `</table>`;
+            let copyDiv = document.getElementById('hiddenCopyDiv');
+            copyDiv.innerHTML = html;
+            let range = document.createRange();
+            range.selectNodeContents(copyDiv);
+            let selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                if (document.execCommand('copy')) showToast("Đã Copy bảng dữ liệu");
+                else showToast("Lỗi Copy, vui lòng thử lại!", true);
+            } catch (err) { showToast("Lỗi Copy, vui lòng thử lại!", true); }
+            selection.removeAllRanges();
+            copyDiv.innerHTML = '';
+        }
+        function exportExcel() {
+            if (currentData.length === 0) return showToast("Không có dữ liệu để xuất!", true);
+            let dataArr = getTableDataAsArray();
+            const ws = XLSX.utils.aoa_to_sheet(dataArr);
+            let merges = [], startCol = 0, currentGroup = dataArr[0][0];
+            for (let i = 0; i < dataArr[0].length; i++) {
+                if (dataArr[0][i] !== currentGroup) {
+                    if (i - 1 > startCol) merges.push({ s: { r: 0, c: startCol }, e: { r: 0, c: i - 1 } });
+                    currentGroup = dataArr[0][i];
+                    startCol = i;
+                }
+            }
+            if (dataArr[0].length - 1 > startCol) merges.push({ s: { r: 0, c: startCol }, e: { r: 0, c: dataArr[0].length - 1 } });
+            ws['!merges'] = merges;
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "KetQuaXN");
+            ws['!cols'] = dataArr[0].map(() => ({ wch: 16 }));
+            XLSX.writeFile(wb, `KetQuaXN_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            showToast("Đã xuất file Excel (.xlsx) thành công!");
+        }
+
+        /* ===== HISTORY — RENDER & ACTIONS ===== */
+        function saveToHistory() {
+            if (currentData.length === 0) return showToast("Không có dữ liệu để lưu!", true);
+            let history = JSON.parse(localStorage.getItem('vox_history')) || [];
+            let newRecord = {
+                id: Date.now(),
+                time: new Date().toLocaleString('vi-VN'),
+                count: currentData.length,
+                data: currentData
+            };
+            history.unshift(newRecord);
+            localStorage.setItem('vox_history', JSON.stringify(history));
+            renderHistory();
+
+            if (firebaseInitState === 'ready') {
+                saveHistoryToFirebase(newRecord).then(() => {
+                    showToast(`Đã lưu phiên (${newRecord.count} BN) và đồng bộ Cloud`);
+                }).catch(() => {
+                    showToast("Đã lưu local — đồng bộ Cloud thất bại!", true);
+                });
+            } else {
+                showToast(`Đã lưu phiên (${newRecord.count} BN)`);
+            }
+        }
+
+        function renderHistory() {
+            const history = JSON.parse(localStorage.getItem('vox_history')) || [];
+            const listEl = document.getElementById('historyList');
+            const badgeEl = document.getElementById('historyCountBadge');
+
+            const totalPatients = history.reduce((sum, h) => sum + (h.count || (h.data || []).length), 0);
+            const statSessions = document.getElementById('historyStatSessions');
+            const statPatients = document.getElementById('historyStatPatients');
+            if (statSessions) statSessions.innerText = history.length;
+            if (statPatients) statPatients.innerText = totalPatients;
+            if (badgeEl) badgeEl.innerText = history.length;
+
+            if (history.length === 0) {
+                listEl.innerHTML = `<div class="empty-state" style="background: var(--bg-card); border-radius: 10px; border: 1px solid var(--border);">
+                    <div style="font-size: 44px; margin-bottom: 8px; opacity: 0.25;">📋</div>
+                    <div style="font-weight:600; color:var(--text-secondary); font-size:14px; margin-bottom:4px;">Chưa có lịch sử</div>
+                    <div style="font-size:12.5px; color:var(--text-muted);">Bấm "Lưu lịch sử" ở bảng dữ liệu để tạo phiên đầu tiên.</div>
+                </div>`;
+                return;
+            }
+
+            const searchText = (document.getElementById('historySearchInput')?.value || '').toLowerCase().trim();
+            let filtered = history;
+            if (searchText) {
+                filtered = history.filter(item => {
+                    if (item.time && item.time.toLowerCase().includes(searchText)) return true;
+                    return (item.data || []).some(p => (p.hoTen || '').toLowerCase().includes(searchText));
+                });
+            }
+
+            const sortMode = document.getElementById('historySortSelect')?.value || 'newest';
+            filtered = [...filtered].sort((a, b) => sortMode === 'oldest' ? a.id - b.id : b.id - a.id);
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<div class="empty-state" style="background: var(--bg-card); border-radius: 10px; border: 1px solid var(--border);">
+                    <div style="font-size: 40px; margin-bottom: 8px; opacity: 0.25;">🔍</div>
+                    <div style="font-weight:600; color:var(--text-secondary); font-size:14px;">Không tìm thấy phiên nào phù hợp</div>
+                    <div style="font-size:12.5px; color:var(--text-muted);">Thử từ khoá khác hoặc xoá bộ lọc.</div>
+                </div>`;
+                return;
+            }
+
+            const docIcon = `<svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
+
+            listEl.innerHTML = filtered.map(item => {
+                const data = item.data || [];
+                const count = item.count || data.length;
+                const isConfirmingDelete = (pendingDeleteHistoryId === item.id);
+                const visiblePatients = data.slice(0, 3);
+                const remaining = count - visiblePatients.length;
+                const patientChips = visiblePatients.map(p =>
+                    `<span class="patient-chip" title="${p.hoTen || 'BN'}">${p.hoTen || 'BN'}</span>`
+                ).join('') + (remaining > 0 ? `<span class="patient-chip more">+${remaining}</span>` : '');
+
+                return `
+                <div class="history-item ${isConfirmingDelete ? 'is-confirming' : ''}">
+                    <div class="history-icon-box">${docIcon}</div>
+                    <div class="history-content">
+                        <div class="history-meta">
+                            <span class="history-time">
+                                <svg class="svg-icon svg-icon-sm" style="color: var(--primary);" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                ${item.time}
+                            </span>
+                            <span class="history-count-badge">${count} bệnh nhân</span>
+                        </div>
+                        <div class="history-patients">${patientChips || '<span style="font-size:12px; color:var(--text-muted);">(Không có dữ liệu bệnh nhân)</span>'}</div>
+                    </div>
+                    <div class="history-actions">
+                        <button class="btn" onclick="previewHistory(${item.id})" title="Xem chi tiết">
+                            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            Xem
+                        </button>
+                        <button class="btn" onclick="loadHistory(${item.id})" title="Khôi phục vào bảng dữ liệu">
+                            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24">
+                                <polyline points="1 4 1 10 7 10"></polyline>
+                                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                            </svg>
+                            Khôi phục
+                        </button>
+                        ${isConfirmingDelete
+                            ? `<button class="btn" style="background:var(--danger); color:#fff; border-color:var(--danger);" onclick="confirmDeleteHistory(${item.id})">Xác nhận xoá</button>`
+                            : `<button class="btn btn-danger-ghost" onclick="requestDeleteHistory(${item.id})" title="Xoá phiên này">
+                                <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                               </button>`
+                        }
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function loadHistory(id) {
+            let history = JSON.parse(localStorage.getItem('vox_history')) || [];
+            let record = history.find(item => item.id === id);
+            if (record) {
+                currentData = record.data;
+                rebuildDynamicColumns();
+                if (activeColumns.length <= BASE_COLUMNS.length) activeColumns = getDefaultColumns();
+                renderTable();
+                switchTab({ currentTarget: document.getElementById('tabBtnPdf') }, 'tab-pdf');
+                persistChanges(true);
+                showToast("Đã khôi phục dữ liệu từ lịch sử!");
+            }
+        }
+
+        function requestDeleteHistory(id) {
+            pendingDeleteHistoryId = id;
+            renderHistory();
+            setTimeout(() => {
+                if (pendingDeleteHistoryId === id) {
+                    pendingDeleteHistoryId = null;
+                    renderHistory();
+                }
+            }, 3500);
+        }
+
+        function confirmDeleteHistory(id) {
+            pendingDeleteHistoryId = null;
+            let history = JSON.parse(localStorage.getItem('vox_history')) || [];
+            history = history.filter(item => item.id !== id);
+            localStorage.setItem('vox_history', JSON.stringify(history));
+            renderHistory();
+            showToast("Đã xóa bản ghi lịch sử!");
+
+            if (firebaseInitState === 'ready') {
+                deleteHistoryFromFirebase(id).catch(err => console.error('[Firebase] delete history failed:', err));
+            }
+        }
+
+        /* ===== PREVIEW MODAL ===== */
+        function previewHistory(id) {
+            const history = JSON.parse(localStorage.getItem('vox_history')) || [];
+            const record = history.find(item => item.id === id);
+            if (!record) return showToast("Không tìm thấy phiên lưu!", true);
+
+            previewHistoryId = id;
+            document.getElementById('previewTime').innerText = '— ' + record.time;
+            const data = record.data || [];
+            document.getElementById('previewCount').innerText = data.length;
+
+            if (data.length === 0) {
+                document.getElementById('previewTableBody').innerHTML = `<tr><td colspan="5" class="preview-empty">Không có dữ liệu bệnh nhân trong phiên này.</td></tr>`;
+            } else {
+                document.getElementById('previewTableBody').innerHTML = data.map((p, idx) => {
+                    const testsCount = Object.keys(p.tests || {}).length;
+                    return `<tr>
+                        <td style="text-align:center; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">${idx + 1}</td>
+                        <td style="font-weight: 500;">${p.hoTen || '-'}</td>
+                        <td style="text-align:center;">${p.tuoi || '-'}</td>
+                        <td style="text-align:center;">${p.gioiTinh || '-'}</td>
+                        <td style="text-align:center;"><span style="font-family: 'JetBrains Mono', monospace; color: var(--primary); font-weight: 600;">${testsCount}</span></td>
+                    </tr>`;
+                }).join('');
+            }
+
+            document.getElementById('previewModal').classList.add('active');
+            document.body.classList.add('modal-open');
+        }
+        function closePreview() {
+            document.getElementById('previewModal').classList.remove('active');
+            document.body.classList.remove('modal-open');
+            previewHistoryId = null;
+        }
+        function restoreFromPreview() {
+            if (previewHistoryId) {
+                const id = previewHistoryId;
+                closePreview();
+                loadHistory(id);
+            }
+        }
+    </script>
+</body>
+</html>
