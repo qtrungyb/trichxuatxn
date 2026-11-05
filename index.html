@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool Trích Xuất KQXN</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="top-navbar">
+        <div class="brand-wrap">
+            <div class="brand-logo">
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            </div>
+            <div class="brand-title">KQXN Extractor</div>
+        </div>
+        <div class="header-controls">
+            <button class="btn-icon" id="densityToggle" onclick="toggleDensity()" data-tooltip="Mật độ hiển thị">
+                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            </button>
+            
+            <!-- NÚT CHỌN MÀU MỚI -->
+            <div style="position: relative;">
+                <button class="btn-icon" id="themeToggleBtn" onclick="toggleThemeMenu(event)" data-tooltip="Màu chủ đề bảng">
+                    <!-- THAY THẾ TOÀN BỘ THẺ SVG CŨ BẰNG ĐOẠN DƯỚI ĐÂY -->
+                    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="13.5" cy="6.5" r="1.5" fill="currentColor"></circle>
+                        <circle cx="17.5" cy="10.5" r="1.5" fill="currentColor"></circle>
+                        <circle cx="8.5" cy="7.5" r="1.5" fill="currentColor"></circle>
+                        <circle cx="6.5" cy="12.5" r="1.5" fill="currentColor"></circle>
+                        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
+                    </svg>
+                </button>
+                                <div class="dropdown-menu" id="themeMenu" style="right: 0; top: calc(100% + 8px); min-width: 220px; max-height: 400px; overflow-y: auto;">
+                    <!-- SOLID COLORS -->
+                    <div class="dropdown-item" onclick="setTableTheme('default')" data-theme="default"><span class="color-swatch" style="background: #2563eb;"></span> Mặc định (Blue)</div>
+                    <div class="dropdown-item" onclick="setTableTheme('ocean')" data-theme="ocean"><span class="color-swatch" style="background: #0284c7;"></span> Xanh biển (Ocean)</div>
+                    <div class="dropdown-item" onclick="setTableTheme('mint')" data-theme="mint"><span class="color-swatch" style="background: #059669;"></span> Bạc hà (Mint)</div>
+                    <div class="dropdown-item" onclick="setTableTheme('rose')" data-theme="rose"><span class="color-swatch" style="background: #e11d48;"></span> Hồng (Rose)</div>
+                    <div class="dropdown-item" onclick="setTableTheme('purple')" data-theme="purple"><span class="color-swatch" style="background: #8b5cf6;"></span> Tím (Amethyst)</div>
+                    <div class="dropdown-item" onclick="setTableTheme('amber')" data-theme="amber"><span class="color-swatch" style="background: #d97706;"></span> Cam (Amber)</div>
+                    <div class="dropdown-item" onclick="setTableTheme('slate')" data-theme="slate"><span class="color-swatch" style="background: #475569;"></span> Xám (Slate)</div>
+                    <div class="dropdown-item" onclick="setTableTheme('red')" data-theme="red"><span class="color-swatch" style="background: #dc2626;"></span> Đỏ (Crimson)</div>
+                    <div class="dropdown-item" onclick="setTableTheme('fuchsia')" data-theme="fuchsia"><span class="color-swatch" style="background: #d946ef;"></span> Hồng cánh sen</div>
+                    <div class="dropdown-item" onclick="setTableTheme('indigo')" data-theme="indigo"><span class="color-swatch" style="background: #4f46e5;"></span> Chàm (Indigo)</div>
+                    <div class="dropdown-item" onclick="setTableTheme('lime')" data-theme="lime"><span class="color-swatch" style="background: #65a30d;"></span> Xanh chanh</div>
+                    <div class="dropdown-item" onclick="setTableTheme('teal')" data-theme="teal"><span class="color-swatch" style="background: #0d9488;"></span> Xanh mòng két</div>
+                    
+                    <div style="height: 1px; background: var(--border); margin: 4px 8px;"></div>
+                    
+                    <!-- GRADIENTS -->
+                    <div class="dropdown-item" onclick="setTableTheme('grad-sunset')" data-theme="grad-sunset"><span class="color-swatch" style="background: linear-gradient(135deg, #ff7e5f, #feb47b);"></span> Gradient: Hoàng hôn</div>
+                    <div class="dropdown-item" onclick="setTableTheme('grad-ocean')" data-theme="grad-ocean"><span class="color-swatch" style="background: linear-gradient(135deg, #00c6ff, #0072ff);"></span> Gradient: Đại dương</div>
+                    <div class="dropdown-item" onclick="setTableTheme('grad-forest')" data-theme="grad-forest"><span class="color-swatch" style="background: linear-gradient(135deg, #11998e, #38ef7d);"></span> Gradient: Rừng xanh</div>
+                    <div class="dropdown-item" onclick="setTableTheme('grad-cosmic')" data-theme="grad-cosmic"><span class="color-swatch" style="background: linear-gradient(135deg, #8e2de2, #4a00e0);"></span> Gradient: Vũ trụ</div>
+                </div>
+			</div>
+
+            <button class="btn-icon" id="historyToggleBtn" onclick="toggleHistoryDrawer()" data-tooltip="Lịch sử lưu">
+                <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </button>
+            <button class="btn-icon" id="darkModeToggle" onclick="toggleDarkMode()" data-tooltip="Giao diện Sáng/Tối">
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE -->
+    <main class="main-workspace">
+        <div class="upload-hero-container" id="uploadHeroContainer">
+            <div class="upload-hero" id="dropZoneHero">
+                <input type="file" id="pdfFileInputHero" accept=".pdf" multiple>
+                <div class="upload-icon-wrap">
+                    <svg class="svg-icon svg-icon-lg" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                </div>
+                <div class="upload-title">Tải lên kết quả xét nghiệm</div>
+                <div class="upload-sub">Kéo thả các tệp PDF vào đây, hoặc bấm để chọn. Hệ thống sẽ tự động trích xuất và chuẩn hóa dữ liệu.</div>
+            </div>
+        </div>
+
+        <div class="data-workspace" id="dataWorkspace">
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <label class="btn-upload-sm" data-tooltip="Thêm PDF nối tiếp">
+                        <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        <span>Thêm PDF</span>
+                        <input type="file" id="pdfFileInputCompact" accept=".pdf" multiple>
+                    </label>
+
+                    <button type="button" class="btn" id="statusPillBtn" onclick="toggleFileDrawer()" style="display: none;">
+                        <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span id="progressText">Đang xử lý...</span>
+                    </button>
+
+                    <div class="stat-pill"><span>Bệnh nhân:</span><b id="statPatientsCount">0</b></div>
+                    <div class="stat-pill"><span>Chỉ số:</span><b id="statColumnsCount">0/0</b></div>
+                </div>
+
+                <div class="toolbar-right">
+                    <button class="btn" onclick="toggleColumnDrawer()">
+                        <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+                        Cột dữ liệu
+                    </button>
+                    
+                    <div style="width: 1px; height: 20px; background: var(--border); margin: 0 4px;"></div>
+
+                    <button class="btn btn-icon-only" onclick="saveToHistory()" data-tooltip="Lưu lịch sử">
+                        <svg class="svg-icon" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    </button>
+                    
+                    <button class="btn btn-icon-only danger" onclick="clearCurrentWorkspace()" data-tooltip="Xóa bảng">
+                        <svg class="svg-icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+
+                    <div class="split-btn" style="position: relative; margin-left: 8px;">
+                        <button class="primary-action" onclick="copyTableData()">
+                            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            Copy vào Excel
+                        </button>
+                        <button onclick="toggleSplitDropdown(event)">
+                            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        <div class="dropdown-menu" id="splitDropdown">
+                            <div class="dropdown-item" onclick="exportExcel()">
+                                <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="17"></line><line x1="16" y1="13" x2="8" y2="17"></line></svg>
+                                Xuất file Excel (.xlsx)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="drawer" id="progressContainer" style="top: 56px; right: auto; left: 24px; width: 320px; transform: translateY(-150%); height: auto; max-height: 300px; border-radius: 8px; border: 1px solid var(--border); box-shadow: var(--shadow-md); z-index: 50;">
+                <div class="drawer-header" style="padding: 12px 16px;">
+                    <span style="font-size: 13px; font-weight: 600;" id="progressPercent">0%</span>
+                    <button onclick="toggleFileDrawer()" class="btn-icon" style="width: 24px; height: 24px;"><svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                </div>
+                <div class="drawer-body" style="padding: 12px 16px;">
+                    <div class="progress-track" style="width: 100%; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 8px;">
+                        <div class="progress-fill" id="progressBarFill" style="height: 100%; background: var(--primary); width: 0%; transition: width 0.2s;"></div>
+                    </div>
+                    <div id="fileList" style="font-size: 12px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 4px; max-height: 150px; overflow-y: auto;"></div>
+                </div>
+            </div>
+
+            <div class="table-container" id="tableContainer">
+                <table class="data-table" id="dataTable">
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div class="drawer-overlay" id="drawerOverlay" onclick="closeAllDrawers()"></div>
+
+    <div class="drawer" id="historyDrawer">
+        <div class="drawer-header">
+            <div class="drawer-title">
+                <svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                Lịch sử lưu
+            </div>
+            <button class="btn-icon" onclick="closeAllDrawers()"><svg class="svg-icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+        </div>
+        <div class="drawer-body">
+            <div class="history-list" id="historyList"></div>
+        </div>
+    </div>
+
+    <div class="drawer" id="columnDrawer">
+        <div class="drawer-header">
+            <div class="drawer-title">
+                <svg class="svg-icon" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                Chọn chỉ số hiển thị
+            </div>
+            <button class="btn-icon" onclick="closeAllDrawers()"><svg class="svg-icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+        </div>
+        <div class="search-wrap" style="position: relative;">
+            <svg class="svg-icon search-icon-pos" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" class="search-input" id="modalSearch" placeholder="Tìm chỉ số..." oninput="renderColumnDrawer()">
+        </div>
+        <div class="drawer-body" style="padding: 12px 20px;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;" id="modalPresetRow"></div>
+            <div class="settings-list" id="columnDrawerList"></div>
+        </div>
+        <div class="drawer-footer">
+            <span style="font-size: 13px; color: var(--text-secondary);">Đang chọn: <b id="modalSelectedSummary" style="color: var(--primary);">0</b></span>
+            <button class="btn btn-primary" onclick="closeAllDrawers()">Hoàn tất</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="previewModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 style="font-size: 15px; font-weight: 600;">Chi tiết phiên lưu <span id="previewTime" style="color: var(--primary); font-weight: 500; margin-left: 8px;"></span></h3>
+                <button class="btn-icon" onclick="closePreview()"><svg class="svg-icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            </div>
+            <div class="modal-body">
+                <table class="preview-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 44px; text-align: center;">STT</th>
+                            <th>Họ và tên</th>
+                            <th style="width: 70px; text-align: center;">Tuổi</th>
+                            <th style="width: 90px; text-align: center;">Giới tính</th>
+                            <th style="width: 100px; text-align: center;">Số chỉ số</th>
+                        </tr>
+                    </thead>
+                    <tbody id="previewTableBody"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <span style="font-size: 13px; color: var(--text-secondary); margin-right: auto;">Tổng cộng: <b id="previewCount" style="color: var(--primary);">0</b> bệnh nhân</span>
+                <button class="btn" onclick="closePreview()">Đóng</button>
+                <button class="btn btn-primary" onclick="restoreFromPreview()">Khôi phục phiên này</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast"></div>
+    <div id="hiddenCopyDiv" style="position: absolute; left: -9999px; top: 0;"></div>
+
+    <!-- NẠP CÁC FILE JS THEO ĐÚNG THỨ TỰ (Không dùng module) -->
+    <script src="js/state.js"></script>
+    <script src="js/firebase.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/pdf.js"></script>
+    <script src="js/excel.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
