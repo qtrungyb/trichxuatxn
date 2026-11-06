@@ -42,7 +42,6 @@ const ICON_STAR = `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polygo
 const ICON_CHECK_ALL = `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>`;
 const ICON_TRASH = `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
 
-// Key Encoding
 function encodeKey(k) {
     if (k === null || k === undefined) return 'k_';
     const s = String(k).replace(/\./g, '__DOT__').replace(/#/g, '__HASH__').replace(/\$/g, '__DOLLAR__').replace(/\//g, '__SLASH__').replace(/\[/g, '__LBRACKET__').replace(/\]/g, '__RBRACKET__');
@@ -78,7 +77,6 @@ function desanitizeDataFromFirebase(data) {
     });
 }
 
-// Utilities
 function getDeviceId() {
     let id = localStorage.getItem('vox_device_id');
     if (!id) { 

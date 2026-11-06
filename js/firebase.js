@@ -26,7 +26,7 @@ function syncToFirebase() {
             activeColumns: state.activeColumns, 
             updatedAt: Date.now(), 
             deviceId: deviceId,
-            tableTheme: state.tableTheme // THÊM DÒNG NÀY
+            tableTheme: state.tableTheme
         };
         ref.set(payload).catch(err => console.error('[Firebase] Sync failed:', err));
     } catch (e) { console.error('[Firebase] Sync exception:', e); }
@@ -42,7 +42,6 @@ function loadFromFirebase() {
             if (val && val.currentData) {
                 const restored = desanitizeDataFromFirebase(val.currentData);
                 
-                // CẬP NHẬT THEME TỪ CLOUD
                 if (val.tableTheme && state.tableTheme !== val.tableTheme) {
                     state.tableTheme = val.tableTheme;
                     localStorage.setItem('vox_table_theme', val.tableTheme);

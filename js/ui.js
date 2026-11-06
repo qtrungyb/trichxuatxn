@@ -103,7 +103,6 @@ function renderTable() {
         return;
     }
     
-    // Thêm cột STT ảo vào đầu
     let displayCols = [{ key: 'stt', label: 'STT', category: 'Thông tin Hành chính' }, ...activeCols];
     
     let groupedCols = [], currentGroup = null;
@@ -116,7 +115,7 @@ function renderTable() {
         currentGroup.count++;
     });
     
-    let row1HTML = groupedCols.map(g => {
+     let row1HTML = groupedCols.map(g => {
         let formattedName = formatCategoryName(g.name);
         let stickyClass = '';
         let stickyStyle = '';
@@ -125,9 +124,11 @@ function renderTable() {
             stickyClass = 'col-sticky col-sticky-last';
             stickyStyle = 'left: 0px; min-width: 410px; max-width: 410px;';
         }
+
+        let borderClass = g.dotClass ? 'group-border-' + g.dotClass.replace('dot-', '') : 'group-border-khac';
         
         return `
-        <th colspan="${g.count}" class="${stickyClass}" style="${stickyStyle}">
+        <th colspan="${g.count}" class="${stickyClass} ${borderClass}" style="${stickyStyle}">
             <span class="cat-group-title">
                 <span class="color-dot ${g.dotClass}"></span> ${formattedName}
             </span>
@@ -160,7 +161,6 @@ function renderTable() {
             stickyStyle += ` min-width: ${width}px; max-width: ${width}px;`;
         }
 
-        // Icon Sắp xếp
         let sortIcon = '';
         if (state.sortCol === c.key) {
             sortIcon = state.sortDir === 'asc' ? ' <span style="font-size:10px;">▲</span>' : ' <span style="font-size:10px;">▼</span>';
@@ -249,7 +249,9 @@ function setupCrosshairHover() {
         let colIndex = td.getAttribute('data-col-index');
 
         table.querySelectorAll('td, tr').forEach(el => el.classList.remove('cell-hover', 'row-hover'));
+        
         if (tr) tr.classList.add('row-hover');
+        
         if (colIndex !== null) {
             table.querySelectorAll(`td[data-col-index="${colIndex}"]`).forEach(el => el.classList.add('cell-hover'));
         }
@@ -276,8 +278,14 @@ function renderColumnDrawer() {
     let html = '';
 
     cats.forEach(cat => {
-        let cols = cat === "Thông tin Hành chính" ? BASE_COLUMNS : state.dynamicTestCols.filter(c => c.category === cat);
+        let cols = cat === "Thông tin Hành chính" ? [...BASE_COLUMNS] : state.dynamicTestCols.filter(c => c.category === cat);
         
+        cols.sort((a, b) => {
+            let aSelected = state.activeColumns.includes(a.key) ? 1 : 0;
+            let bSelected = state.activeColumns.includes(b.key) ? 1 : 0;
+            return bSelected - aSelected;
+        });
+
         if (isSearching) {
             cols = cols.filter(c => c.label.toLowerCase().includes(keyword));
         }
@@ -307,16 +315,14 @@ function renderColumnDrawer() {
     const allCols = getAllColumns();
     document.getElementById('modalSelectedSummary').innerText = allCols.filter(c => state.activeColumns.includes(c.key)).length;
 }
-// Thêm 2 hàm này vào cuối file ui.js
+
 function toggleThemeMenu(e) {
     if (e) e.stopPropagation();
     const menu = document.getElementById('themeMenu');
-    // Đóng các menu khác nếu đang mở
     document.getElementById('splitDropdown').classList.remove('show');
     menu.classList.toggle('show');
 }
 
-// Bắt sự kiện click ra ngoài để đóng menu
 document.addEventListener('click', (e) => {
     const themeMenu = document.getElementById('themeMenu');
     const themeBtn = document.getElementById('themeToggleBtn');

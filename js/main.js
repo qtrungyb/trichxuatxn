@@ -1,32 +1,35 @@
-window.toggleThemeMenu = toggleThemeMenu; // Lấy từ ui.js
+window.toggleThemeMenu = toggleThemeMenu;
+
+window.openGuideModal = function() {
+    document.getElementById('guideModal').classList.add('active');
+};
+
+window.closeGuideModal = function(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById('guideModal').classList.remove('active');
+};
 
 window.setTableTheme = (theme) => {
-    // Xóa các class theme cũ
     Array.from(document.body.classList).forEach(cls => {
         if (cls.startsWith('theme-')) document.body.classList.remove(cls);
     });
     
-    // Thêm class theme mới
     if (theme !== 'default') {
         document.body.classList.add('theme-' + theme);
     }
     
     localStorage.setItem('vox_table_theme', theme);
-    state.tableTheme = theme; // Cập nhật state
+    state.tableTheme = theme;
     
-    // Cập nhật dấu tick trên menu
     document.querySelectorAll('#themeMenu .dropdown-item').forEach(el => {
         el.classList.toggle('active', el.dataset.theme === theme);
     });
     
-    // Đóng menu
     document.getElementById('themeMenu').classList.remove('show');
     
-    // ĐỒNG BỘ LÊN FIREBASE NGAY LẬP TỨC
     if (typeof persistChanges === 'function') persistChanges(true);
 };
 
-// Thêm hàm xử lý Sắp xếp (bỏ vào ngay dưới hàm setTableTheme)
 window.handleSort = (colKey) => {
     if (state.sortCol === colKey) {
         state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
@@ -47,7 +50,6 @@ window.handleSort = (colKey) => {
         let valA = getVal(a);
         let valB = getVal(b);
         
-        // Xử lý số (nếu có thể parse ra số)
         let numA = parseFloat(valA);
         let numB = parseFloat(valB);
         
@@ -55,7 +57,6 @@ window.handleSort = (colKey) => {
             return state.sortDir === 'asc' ? numA - numB : numB - numA;
         }
         
-        // Xử lý chuỗi
         if (typeof valA === 'string' && typeof valB === 'string') {
             return state.sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
         }
@@ -65,21 +66,6 @@ window.handleSort = (colKey) => {
     renderTable();
 };
 
-// Sửa lại phần khởi tạo DOMContentLoaded ở cuối file main.js
-document.addEventListener('DOMContentLoaded', () => {
-    // ... (giữ nguyên code cũ)
-    if (localStorage.getItem('vox_dark_mode') === 'true') { document.body.classList.add('dark-mode'); updateDarkModeIcon(true); }
-    if (localStorage.getItem('vox_compact_mode') === 'true') { document.body.classList.add('compact-mode'); }
-    
-    // THÊM DÒNG NÀY: Khôi phục màu chủ đề đã lưu
-    const savedTheme = localStorage.getItem('vox_table_theme') || 'default';
-    window.setTableTheme(savedTheme);
-    
-    // ... (giữ nguyên phần còn lại)
-    if (state.activeColumns.length === 0) state.activeColumns = BASE_COLUMNS.map(c => c.key);
-    // ...
-});
-// Gắn các hàm vào window để HTML có thể gọi qua onclick
 window.toggleDarkMode = toggleDarkMode;
 window.toggleDensity = toggleDensity;
 window.toggleHistoryDrawer = toggleHistoryDrawer;
@@ -94,11 +80,19 @@ window.renderTable = renderTable;
 window.showToast = showToast;
 
 window.toggleSplitDropdown = function(e) {
-    e.stopPropagation();
-    document.getElementById('splitDropdown').classList.toggle('show');
+    if (e) e.stopPropagation();
+    const dropdown = document.getElementById('splitDropdown');
+    dropdown.classList.toggle('show');
 };
-document.addEventListener('click', () => {
-    document.getElementById('splitDropdown').classList.remove('show');
+
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('splitDropdown');
+    if (dropdown && dropdown.classList.contains('show')) {
+        const splitBtn = dropdown.closest('.split-btn');
+        if (splitBtn && !splitBtn.contains(e.target)) {
+            dropdown.classList.remove('show');
+        }
+    }
 });
 
 window.updateData = (rowIndex, key, newValue) => {
@@ -276,10 +270,12 @@ window.restoreFromPreview = () => {
     }
 };
 
-// Khởi tạo khi trang load xong
 document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('vox_dark_mode') === 'true') { document.body.classList.add('dark-mode'); updateDarkModeIcon(true); }
     if (localStorage.getItem('vox_compact_mode') === 'true') { document.body.classList.add('compact-mode'); }
+    
+    const savedTheme = localStorage.getItem('vox_table_theme') || 'default';
+    window.setTableTheme(savedTheme);
     
     if (state.activeColumns.length === 0) state.activeColumns = BASE_COLUMNS.map(c => c.key);
     try {

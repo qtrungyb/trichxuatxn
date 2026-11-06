@@ -3,7 +3,6 @@ function copyTableData() {
     let activeCols = getSortedActiveCols();
     if (activeCols.length === 0) return showToast("Vui lòng chọn ít nhất 1 cột!", true);
     
-    // Tạo mảng cột bao gồm STT ở đầu
     let displayCols = [{ key: 'stt', label: 'STT', category: 'Thông tin Hành chính' }, ...activeCols];
 
     let groupedCols = [], currentGroup = null;
@@ -26,7 +25,7 @@ function copyTableData() {
         displayCols.forEach(col => {
             let val = '';
             if (col.key === 'stt') {
-                val = idx + 1; // Đánh STT
+                val = idx + 1;
             } else if (col.key.startsWith('test_')) {
                 let actualKey = col.key.replace('test_', '');
                 val = row.tests[actualKey] || '';
@@ -61,7 +60,6 @@ function exportExcel() {
     let activeCols = getSortedActiveCols();
     if (activeCols.length === 0) return showToast("Vui lòng chọn ít nhất 1 cột!", true);
 
-    // Tạo mảng cột bao gồm STT ở đầu
     let displayCols = [{ key: 'stt', label: 'STT', category: 'Thông tin Hành chính' }, ...activeCols];
 
     let wsData = [];
@@ -121,7 +119,6 @@ function exportExcel() {
                 cell.s.font.bold = true;
                 cell.s.fill = { fgColor: { rgb: "F1F5F9" } };
             }
-            // Căn trái cho cột Họ tên (Cột 1 vì Cột 0 là STT)
             if (C === 1 && R > 1) {
                 cell.s.alignment.horizontal = "left";
             }
