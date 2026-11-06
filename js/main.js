@@ -292,3 +292,15 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDragAndDrop();
     initFirebase();
 });
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(registration => {
+                console.log('Service Worker đã hoạt động! Scope:', registration.scope);
+            })
+            .catch(error => {
+                console.error('Lỗi đăng ký Service Worker:', error);
+            });
+    });
+}
