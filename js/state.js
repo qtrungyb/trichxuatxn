@@ -108,7 +108,13 @@ function getDefaultColumns() {
     state.dynamicTestCols.forEach(c => {
         let cat = (c.category || "").toLowerCase().trim();
         let label = (c.label || "").toLowerCase().trim();
-        if (cat.includes("hóa sinh") || cat.includes("vi sinh")) defaults.push(c.key);
+        
+        if (label.includes("amphetamin")) {
+            defaults.push(c.key);
+        }
+        else if (cat.includes("hóa sinh") || cat.includes("vi sinh")) {
+            defaults.push(c.key);
+        }
         else if (cat.includes("huyết học")) {
             let targetLabels = ["số lượng hồng cầu", "huyết sắc tố", "số lượng tiểu cầu", "số lượng bạch cầu"];
             if (targetLabels.some(t => label.includes(t))) defaults.push(c.key);
