@@ -54,26 +54,21 @@ window.handleHeaderDragEnd = (e) => {
 window.handleHeaderDrop = (e, targetKey) => {
     e.preventDefault();
     e.currentTarget.style.opacity = '1';
-    
+
     if (!draggedColKey || draggedColKey === targetKey) return;
 
-    let order = [...state.customColumnOrder];
-    if (order.length === 0) {
-        order = getSortedActiveCols().map(c => c.key);
-    }
+    // Lấy đúng thứ tự đang hiển thị (gồm cả cột mới nếu có)
+    let order = getSortedActiveCols().map(c => c.key);
 
-    getSortedActiveCols().forEach(c => {
-        if (!order.includes(c.key)) order.push(c.key);
+    // Giữ luôn vị trí các cột đang ẩn trong customColumnOrder cũ
+    [...state.customColumnOrder].forEach(k => {
+        if (!order.includes(k)) order.push(k);
     });
 
     order = order.filter(k => k !== draggedColKey);
-    
     let targetIdx = order.indexOf(targetKey);
-    if (targetIdx === -1) {
-        order.push(draggedColKey);
-    } else {
-        order.splice(targetIdx, 0, draggedColKey);
-    }
+    if (targetIdx === -1) order.push(draggedColKey);
+    else order.splice(targetIdx, 0, draggedColKey);
 
     state.customColumnOrder = order;
     localStorage.setItem('vox_custom_column_order', JSON.stringify(order));
@@ -216,7 +211,9 @@ window.saveToHistory = () => {
         id: Date.now(),
         time: new Date().toLocaleString('vi-VN'),
         count: state.currentData.length,
-        data: state.currentData
+        data: JSON.parse(JSON.stringify(state.currentData)),   // deep copy
+        customColumnOrder: [...state.customColumnOrder],       // LƯU layout
+        activeColumns: [...state.activeColumns]                // LƯU layout
     };
     history.unshift(newRecord);
     localStorage.setItem('vox_history', JSON.stringify(history));
@@ -275,15 +272,29 @@ window.renderHistory = function() {
 window.loadHistory = (id) => {
     let history = JSON.parse(localStorage.getItem('vox_history')) || [];
     let record = history.find(item => item.id === id);
-    if (record) {
-        state.currentData = record.data;
-        rebuildDynamicColumns();
-        if (state.activeColumns.length <= BASE_COLUMNS.length) state.activeColumns = getDefaultColumns();
-        renderTable();
-        closeAllDrawers();
-        persistChanges(true);
-        showToast("Đã khôi phục dữ liệu!");
+    if (!record) return;
+
+    state.currentData = JSON.parse(JSON.stringify(record.data || []));
+    rebuildDynamicColumns();
+
+    // Khôi phục layout nếu bản ghi có (backwards-compat với bản ghi cũ)
+    if (Array.isArray(record.customColumnOrder) && record.customColumnOrder.length > 0) {
+        state.customColumnOrder = [...record.customColumnOrder];
     }
+    if (Array.isArray(record.activeColumns) && record.activeColumns.length > 0) {
+        state.activeColumns = [...record.activeColumns];
+    } else if (state.activeColumns.length <= BASE_COLUMNS.length) {
+        state.activeColumns = getDefaultColumns();
+    }
+
+    // Ghi lại localStorage để F5 vẫn giữ
+    localStorage.setItem('vox_custom_column_order', JSON.stringify(state.customColumnOrder));
+    localStorage.setItem('vox_all_active_columns', JSON.stringify(state.activeColumns));
+
+    renderTable();
+    closeAllDrawers();
+    persistChanges(true);
+    showToast("Đã khôi phục dữ liệu!");
 };
 
 window.requestDeleteHistory = (id) => {

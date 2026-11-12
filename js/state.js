@@ -33,10 +33,10 @@ const state = {
     firebaseSaveTimer: null,
     localSaveTimer: null,
     sharedHistoryListener: null,
-	sortCol: null,
+    sortCol: null,
     sortDir: 'asc',
-	tableTheme: localStorage.getItem('vox_table_theme') || 'default',
-    customColumnOrder: JSON.parse(localStorage.getItem('vox_custom_column_order')) || [] // THÊM DÒNG NÀY
+    tableTheme: localStorage.getItem('vox_table_theme') || 'default',
+    customColumnOrder: JSON.parse(localStorage.getItem('vox_custom_column_order')) || []
 };
 
 const ICON_STAR = `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
@@ -78,41 +78,58 @@ function desanitizeDataFromFirebase(data) {
     });
 }
 
+/**
+ * Firebase lưu array thành object dạng {0:'a',1:'b'}.
+ * Helper này chuẩn hoá về mảng JS thuần (giữ đúng thứ tự index).
+ */
+function firebaseArrayToArray(val) {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'object') {
+        return Object.keys(val)
+            .sort((a, b) => Number(a) - Number(b))
+            .map(k => val[k]);
+    }
+    return [];
+}
+
 function getDeviceId() {
     let id = localStorage.getItem('vox_device_id');
-    if (!id) { 
-        id = 'dev_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now().toString(36); 
-        localStorage.setItem('vox_device_id', id); 
+    if (!id) {
+        id = 'dev_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now().toString(36);
+        localStorage.setItem('vox_device_id', id);
     }
     return id;
 }
 
-function getAllColumns() { 
-    return [...BASE_COLUMNS, ...state.dynamicTestCols]; 
+function getAllColumns() {
+    return [...BASE_COLUMNS, ...state.dynamicTestCols];
 }
 
+/**
+ * Trả về danh sách cột đang active, đã sắp xếp theo đúng thứ tự hiển thị.
+ * LƯU Ý: KHÔNG mutate state.customColumnOrder — dùng bản sao effectiveOrder.
+ */
 function getSortedActiveCols() {
     let allCols = getAllColumns();
     let activeCols = allCols.filter(c => state.activeColumns.includes(c.key));
-    
-    // CẢI TIẾN: Sắp xếp theo thứ tự tùy chỉnh (nếu có)
+
     if (state.customColumnOrder && state.customColumnOrder.length > 0) {
+        // Bản sao — không ghi ngược vào state
+        let effectiveOrder = [...state.customColumnOrder];
         activeCols.forEach(c => {
-            if (!state.customColumnOrder.includes(c.key)) {
-                state.customColumnOrder.push(c.key);
-            }
+            if (!effectiveOrder.includes(c.key)) effectiveOrder.push(c.key);
         });
-        
-        activeCols.sort((a, b) => {
-            return state.customColumnOrder.indexOf(a.key) - state.customColumnOrder.indexOf(b.key);
-        });
+        activeCols.sort((a, b) =>
+            effectiveOrder.indexOf(a.key) - effectiveOrder.indexOf(b.key)
+        );
     } else {
-        // Nếu không có tùy chỉnh, sắp xếp mặc định theo nhóm
         activeCols.sort((a, b) => {
             let catA = a.category || 'Thông tin Hành chính';
             let catB = b.category || 'Thông tin Hành chính';
             let idxA = CATEGORY_ORDER.indexOf(catA), idxB = CATEGORY_ORDER.indexOf(catB);
-            if (idxA === -1) idxA = 99; if (idxB === -1) idxB = 99;
+            if (idxA === -1) idxA = 99;
+            if (idxB === -1) idxB = 99;
             return idxA - idxB;
         });
     }
@@ -124,7 +141,7 @@ function getDefaultColumns() {
     state.dynamicTestCols.forEach(c => {
         let cat = (c.category || "").toLowerCase().trim();
         let label = (c.label || "").toLowerCase().trim();
-        
+
         if (label.includes("amphetamin")) {
             defaults.push(c.key);
         }
@@ -164,7 +181,8 @@ function getAllCategories() {
     state.dynamicTestCols.forEach(col => { if (!cats.includes(col.category)) cats.push(col.category); });
     cats.sort((a, b) => {
         let idxA = CATEGORY_ORDER.indexOf(a), idxB = CATEGORY_ORDER.indexOf(b);
-        if (idxA === -1) idxA = 99; if (idxB === -1) idxB = 99;
+        if (idxA === -1) idxA = 99;
+        if (idxB === -1) idxB = 99;
         return idxA - idxB;
     });
     return cats;

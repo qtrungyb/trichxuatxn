@@ -61,10 +61,15 @@ function loadFromFirebase() {
                 }
 
                 // TẢI THỨ TỰ CỘT TÙY CHỈNH TỪ CLOUD
-                if (val.customColumnOrder && Array.isArray(val.customColumnOrder)) {
-                    state.customColumnOrder = val.customColumnOrder;
-                    localStorage.setItem('vox_custom_column_order', JSON.stringify(val.customColumnOrder));
-                }
+                if (val.customColumnOrder) {
+					const cloudOrder = firebaseArrayToArray(val.customColumnOrder);
+					const localOrder = JSON.parse(localStorage.getItem('vox_custom_column_order') || '[]');
+					// Chỉ dùng cloud khi local rỗng HOẶC cloud đầy đủ hơn local
+					if (cloudOrder.length > 0 && (localOrder.length === 0 || cloudOrder.length > localOrder.length)) {
+						state.customColumnOrder = cloudOrder;
+						localStorage.setItem('vox_custom_column_order', JSON.stringify(cloudOrder));
+					}
+				}
 
                 if (restored.length > 0) {
                     if (state.currentData.length === 0) {
@@ -105,16 +110,14 @@ function persistChanges(immediate = false) {
 
 function saveHistoryToFirebase(record) {
     if (state.firebaseInitState !== 'ready' || !state.firebaseDb) return Promise.reject(new Error('Firebase not ready'));
-    const data = { time: record.time, count: record.count, data: sanitizeDataForFirebase(record.data || []) };
+    const data = {
+        time: record.time,
+        count: record.count,
+        data: sanitizeDataForFirebase(record.data || []),
+        customColumnOrder: record.customColumnOrder || [],
+        activeColumns: record.activeColumns || []
+    };
     return state.firebaseDb.ref(SHARED_HISTORY_PATH + '/' + record.id).set(data);
-}
-
-function deleteHistoryFromFirebase(id) {
-    if (state.firebaseInitState !== 'ready' || !state.firebaseDb) return Promise.reject(new Error('Firebase not ready'));
-    const updates = {};
-    updates[SHARED_HISTORY_PATH + '/' + id] = null;
-    updates[SHARED_HISTORY_DELETED_PATH + '/' + id] = Date.now();
-    return state.firebaseDb.ref().update(updates);
 }
 
 function mergeHistoryFromCloud(cloud, deleted) {
@@ -125,7 +128,14 @@ function mergeHistoryFromCloud(cloud, deleted) {
         const id = Number(k);
         if (!id || tombstoned.has(id)) return;
         const item = cloud[k] || {};
-        merged.set(id, { id: id, time: item.time || '', count: item.count || 0, data: desanitizeDataFromFirebase(item.data || []) });
+        merged.set(id, {
+            id: id,
+            time: item.time || '',
+            count: item.count || 0,
+            data: desanitizeDataFromFirebase(item.data || []),
+            customColumnOrder: firebaseArrayToArray(item.customColumnOrder),
+            activeColumns: firebaseArrayToArray(item.activeColumns)
+        });
     });
     localHistory.forEach(h => {
         if (!tombstoned.has(h.id) && !merged.has(h.id)) merged.set(h.id, h);
