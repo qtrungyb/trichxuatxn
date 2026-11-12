@@ -32,7 +32,6 @@ body.dark-mode {
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* SỬA LỖI TẠI ĐÂY: Khóa cứng chiều cao toàn trang */
 html, body {
     height: 100vh;
     max-height: 100vh;
@@ -45,6 +44,7 @@ body {
     display: flex; flex-direction: column;
     font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;
 }
+
 .svg-icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; flex-shrink: 0; }
 .svg-icon-sm { width: 14px; height: 14px; }
 .svg-icon-lg { width: 24px; height: 24px; }
@@ -113,13 +113,13 @@ body {
     flex: 1; display: flex; flex-direction: column;
     width: 100%; max-width: 1600px; margin: 0 auto; padding: 24px;
     position: relative; overflow: hidden;
-    min-height: 0; 
+    min-height: 0;
 }
 
 .tab-content {
     display: none; flex-direction: column; gap: 16px; flex: 1;
     animation: fadeIn 0.2s ease-out;
-    min-height: 0; /* BẮT BUỘC: Ép flexbox không tự phình to */
+    min-height: 0;
 }
 .tab-content.active { display: flex; }
 
@@ -149,7 +149,6 @@ body {
     flex: 1; display: none; flex-direction: column; gap: 16px;
     animation: fadeIn 0.3s ease-out;
     min-height: 0; 
-    overflow: hidden;
 }
 .data-workspace.active { display: flex; }
 
@@ -228,17 +227,23 @@ body {
     border-color: rgba(239, 68, 68, 0.3); 
     background: var(--danger-bg); 
     box-shadow: 0 4px 12px -2px rgba(239, 68, 68, 0.15);
+    transform: translateY(-2px);
 }
 
 .split-btn { 
     display: flex; 
     border-radius: 8px; 
     box-shadow: var(--shadow-sm); 
-    transition: box-shadow 0.2s;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     position: relative;
 }
 .split-btn:hover {
+    transform: translateY(-2px);
     box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.1);
+}
+.split-btn:active {
+    transform: translateY(0);
+    box-shadow: none;
 }
 .split-btn > button {
     border: 1px solid var(--border); background: var(--bg-card);
@@ -269,7 +274,7 @@ body {
 .table-container {
     flex: 1; background: var(--bg-card); border: 1px solid var(--border);
     border-radius: 12px; 
-    overflow: auto; /* Thanh cuộn sẽ xuất hiện ở đây */
+    overflow: auto; 
     box-shadow: var(--shadow-sm);
     scrollbar-width: thin; scrollbar-color: var(--border) transparent;
     position: relative;
@@ -286,8 +291,8 @@ table.data-table {
 
 table.data-table thead tr.tier-group th {
     background: var(--table-header-bg); 
-    padding: 0 16px; /* Bỏ padding trên/dưới, dùng height để cố định */
-    height: 38px;    /* Khóa cứng chiều cao */
+    padding: 0 16px;
+    height: 38px;
     box-sizing: border-box;
     font-weight: 600; font-size: 11.5px; color: var(--text-secondary);
     border-bottom: 1px solid var(--border);
@@ -314,10 +319,9 @@ table.data-table thead tr.tier-indicator th {
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border-bottom: 2px solid var(--border);
-    position: sticky; top: 38px; z-index: 19; /* Khớp chính xác với height của dòng 1 */
+    position: sticky; top: 38px; z-index: 19;
     text-align: center;
-    /* Dùng bóng đổ cùng màu nền để lấp đầy mọi khe hở 1px nếu có */
-    box-shadow: 0 -1px 0 var(--table-header-bg); 
+    box-shadow: 0 -1px 0 var(--table-header-bg);
 }
 
 table.data-table td {
@@ -329,10 +333,23 @@ table.data-table td {
 
 table.data-table tbody tr:nth-child(even) td { background-color: var(--table-stripe); }
 
-table.data-table tbody tr.row-hover td { background-color: var(--table-hover) !important; }
-table.data-table tbody td.cell-hover { background-color: var(--table-hover) !important; }
-table.data-table tbody tr.row-hover td.cell-hover { background-color: var(--table-hover) !important; }
+/* ================= STT COLUMN & GROUP BORDERS ================= */
+table.data-table td[data-key="stt"] {
+    background: var(--bg-subtle) !important;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-right: 2px solid var(--border) !important;
+}
 
+th.group-border-hanh-chinh { border-top: 3px solid #3b82f6; }
+th.group-border-huyet-hoc  { border-top: 3px solid #ef4444; }
+th.group-border-hoa-sinh   { border-top: 3px solid #10b981; }
+th.group-border-nuoc-tieu  { border-top: 3px solid #f59e0b; }
+th.group-border-vi-sinh    { border-top: 3px solid #8b5cf6; }
+th.group-border-dong-mau   { border-top: 3px solid #ec4899; }
+th.group-border-khac       { border-top: 3px solid #6b7280; }
+
+/* ================= STICKY COLUMNS ================= */
 .col-sticky {
     position: sticky !important;
     background-color: var(--bg-card) !important;
@@ -341,13 +358,13 @@ table.data-table tbody tr.row-hover td.cell-hover { background-color: var(--tabl
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+table.data-table tbody tr:nth-child(even) td.col-sticky { 
+    background-color: var(--table-stripe) !important; 
+}
+
 table.data-table thead tr.tier-group th.col-sticky { z-index: 22 !important; background-color: var(--table-header-bg) !important; }
 table.data-table thead tr.tier-indicator th.col-sticky { z-index: 25 !important; background-color: var(--table-header-bg) !important; }
-
-table.data-table tbody tr:nth-child(even) td.col-sticky { background-color: var(--table-stripe) !important; }
-table.data-table tbody tr.row-hover td.col-sticky { background-color: var(--table-hover) !important; }
-table.data-table tbody td.cell-hover.col-sticky { background-color: var(--table-hover) !important; }
-table.data-table tbody tr.row-hover td.cell-hover.col-sticky { background-color: var(--table-hover) !important; }
 
 .col-sticky-last {
     box-shadow: 6px 0 16px -4px rgba(0,0,0,0.1);
@@ -355,10 +372,42 @@ table.data-table tbody tr.row-hover td.cell-hover.col-sticky { background-color:
 }
 body.dark-mode .col-sticky-last { box-shadow: 6px 0 16px -4px rgba(0,0,0,0.5); }
 
+/* ================= CROSSHAIR HIGHLIGHT (ĐỒNG NHẤT) ================= */
+table.data-table tbody tr.row-hover td,
+table.data-table tbody tr.row-hover td.col-sticky {
+    background-color: var(--table-hover) !important;
+}
+
+table.data-table tbody tr:nth-child(n) td.cell-hover,
+table.data-table tbody tr:nth-child(n) td.cell-hover.col-sticky {
+    background-color: var(--table-hover) !important;
+}
+
+table.data-table tbody tr.row-hover td.cell-hover,
+table.data-table tbody tr.row-hover td.cell-hover.col-sticky {
+    background-color: var(--table-hover) !important;
+}
+
+/* ================= DRAG & DROP COLUMN ================= */
+.drag-handle {
+    cursor: grab;
+    transition: color 0.15s;
+    margin-right: 6px;
+}
+.drag-handle:active {
+    cursor: grabbing;
+}
+th:hover .drag-handle {
+    color: var(--primary) !important;
+}
+th[draggable="true"] {
+    user-select: none;
+}
+
+/* ================= OTHERS ================= */
 .text-left { text-align: left !important; }
 .text-center { text-align: center !important; }
 .text-right { text-align: right !important; }
-
 .col-group-end { border-right: 2px solid var(--border) !important; }
 
 table.data-table td.col-data { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
@@ -377,7 +426,7 @@ body.dark-mode .badge-success { background: rgba(5, 150, 105, 0.15); border-colo
 .empty-table { text-align: center; padding: 64px 20px; color: var(--text-muted); font-size: 14px; }
 
 body.compact-mode table.data-table td { padding: 6px 12px; font-size: 12.5px; }
-body.compact-mode table.data-table thead tr.tier-group th { padding: 8px 12px; }
+body.compact-mode table.data-table thead tr.tier-group th { padding: 0 12px; }
 body.compact-mode table.data-table thead tr.tier-indicator th { padding: 8px 12px; }
 
 /* ================= DRAWERS ================= */
@@ -611,22 +660,6 @@ body.dark-mode.theme-grad-cosmic {
     --table-header-bg: linear-gradient(90deg, #4c1d95, #701a75);
     --table-stripe: #2e1065; --table-hover: #6d28d9;
 }
-
-/* ================= STT COLUMN & GROUP BORDERS ================= */
-table.data-table td[data-key="stt"] {
-    background: var(--bg-subtle) !important;
-    font-weight: 600;
-    color: var(--text-secondary);
-    border-right: 2px solid var(--border) !important;
-}
-
-th.group-border-hanh-chinh { border-top: 3px solid #3b82f6; }
-th.group-border-huyet-hoc  { border-top: 3px solid #ef4444; }
-th.group-border-hoa-sinh   { border-top: 3px solid #10b981; }
-th.group-border-nuoc-tieu  { border-top: 3px solid #f59e0b; }
-th.group-border-vi-sinh    { border-top: 3px solid #8b5cf6; }
-th.group-border-dong-mau   { border-top: 3px solid #ec4899; }
-th.group-border-khac       { border-top: 3px solid #6b7280; }
 
 /* ================= GUIDE BUTTON ================= */
 .guide-btn {
