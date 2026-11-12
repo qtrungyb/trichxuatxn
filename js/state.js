@@ -35,7 +35,8 @@ const state = {
     sharedHistoryListener: null,
 	sortCol: null,
     sortDir: 'asc',
-	tableTheme: localStorage.getItem('vox_table_theme') || 'default'
+	tableTheme: localStorage.getItem('vox_table_theme') || 'default',
+    customColumnOrder: JSON.parse(localStorage.getItem('vox_custom_column_order')) || [] // THÊM DÒNG NÀY
 };
 
 const ICON_STAR = `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
@@ -93,13 +94,28 @@ function getAllColumns() {
 function getSortedActiveCols() {
     let allCols = getAllColumns();
     let activeCols = allCols.filter(c => state.activeColumns.includes(c.key));
-    activeCols.sort((a, b) => {
-        let catA = a.category || 'Thông tin Hành chính';
-        let catB = b.category || 'Thông tin Hành chính';
-        let idxA = CATEGORY_ORDER.indexOf(catA), idxB = CATEGORY_ORDER.indexOf(catB);
-        if (idxA === -1) idxA = 99; if (idxB === -1) idxB = 99;
-        return idxA - idxB;
-    });
+    
+    // CẢI TIẾN: Sắp xếp theo thứ tự tùy chỉnh (nếu có)
+    if (state.customColumnOrder && state.customColumnOrder.length > 0) {
+        activeCols.forEach(c => {
+            if (!state.customColumnOrder.includes(c.key)) {
+                state.customColumnOrder.push(c.key);
+            }
+        });
+        
+        activeCols.sort((a, b) => {
+            return state.customColumnOrder.indexOf(a.key) - state.customColumnOrder.indexOf(b.key);
+        });
+    } else {
+        // Nếu không có tùy chỉnh, sắp xếp mặc định theo nhóm
+        activeCols.sort((a, b) => {
+            let catA = a.category || 'Thông tin Hành chính';
+            let catB = b.category || 'Thông tin Hành chính';
+            let idxA = CATEGORY_ORDER.indexOf(catA), idxB = CATEGORY_ORDER.indexOf(catB);
+            if (idxA === -1) idxA = 99; if (idxB === -1) idxB = 99;
+            return idxA - idxB;
+        });
+    }
     return activeCols;
 }
 

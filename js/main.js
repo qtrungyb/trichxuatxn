@@ -30,7 +30,62 @@ window.setTableTheme = (theme) => {
     if (typeof persistChanges === 'function') persistChanges(true);
 };
 
+// ================= DRAG & DROP COLUMN =================
+let draggedColKey = null;
+let isDraggingCol = false;
+
+window.handleHeaderDragStart = (e, key) => {
+    draggedColKey = key;
+    isDraggingCol = true;
+    e.dataTransfer.effectAllowed = 'move';
+    e.currentTarget.style.opacity = '0.4';
+};
+
+window.handleHeaderDragOver = (e) => {
+    e.preventDefault(); 
+    e.dataTransfer.dropEffect = 'move';
+};
+
+window.handleHeaderDragEnd = (e) => {
+    e.currentTarget.style.opacity = '1';
+    setTimeout(() => { isDraggingCol = false; }, 100);
+};
+
+window.handleHeaderDrop = (e, targetKey) => {
+    e.preventDefault();
+    e.currentTarget.style.opacity = '1';
+    
+    if (!draggedColKey || draggedColKey === targetKey) return;
+
+    let order = [...state.customColumnOrder];
+    if (order.length === 0) {
+        order = getSortedActiveCols().map(c => c.key);
+    }
+
+    getSortedActiveCols().forEach(c => {
+        if (!order.includes(c.key)) order.push(c.key);
+    });
+
+    order = order.filter(k => k !== draggedColKey);
+    
+    let targetIdx = order.indexOf(targetKey);
+    if (targetIdx === -1) {
+        order.push(draggedColKey);
+    } else {
+        order.splice(targetIdx, 0, draggedColKey);
+    }
+
+    state.customColumnOrder = order;
+    localStorage.setItem('vox_custom_column_order', JSON.stringify(order));
+
+    draggedColKey = null;
+    renderTable();
+    persistChanges(true);
+};
+
 window.handleSort = (colKey) => {
+    if (isDraggingCol) return;
+    
     if (state.sortCol === colKey) {
         state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
     } else {
@@ -129,7 +184,8 @@ window.toggleColumn = (key, checkbox) => {
 
 window.clearCurrentWorkspace = () => {
     if(!confirm("Bạn có chắc chắn muốn xóa toàn bộ dữ liệu hiện tại?")) return;
-    state.currentData = []; state.dynamicTestCols = [];
+    state.currentData = []; state.dynamicTestCols = []; state.customColumnOrder = [];
+    localStorage.removeItem('vox_custom_column_order');
     document.getElementById('progressContainer').style.transform = 'translateY(-150%)';
     document.getElementById('statusPillBtn').style.display = 'none';
     document.getElementById('pdfFileInputHero').value = '';

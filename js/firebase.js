@@ -26,7 +26,8 @@ function syncToFirebase() {
             activeColumns: state.activeColumns, 
             updatedAt: Date.now(), 
             deviceId: deviceId,
-            tableTheme: state.tableTheme
+            tableTheme: state.tableTheme,
+            customColumnOrder: state.customColumnOrder // THÊM DÒNG NÀY
         };
         ref.set(payload).catch(err => console.error('[Firebase] Sync failed:', err));
     } catch (e) { console.error('[Firebase] Sync exception:', e); }
@@ -45,15 +46,15 @@ function loadFromFirebase() {
                 if (val.tableTheme && state.tableTheme !== val.tableTheme) {
                     state.tableTheme = val.tableTheme;
                     localStorage.setItem('vox_table_theme', val.tableTheme);
-                    
-                    Array.from(document.body.classList).forEach(cls => {
-                        if (cls.startsWith('theme-')) document.body.classList.remove(cls);
-                    });
+                    Array.from(document.body.classList).forEach(cls => { if (cls.startsWith('theme-')) document.body.classList.remove(cls); });
                     if (val.tableTheme !== 'default') document.body.classList.add('theme-' + val.tableTheme);
-                    
-                    document.querySelectorAll('#themeMenu .dropdown-item').forEach(el => {
-                        el.classList.toggle('active', el.dataset.theme === val.tableTheme);
-                    });
+                    document.querySelectorAll('#themeMenu .dropdown-item').forEach(el => { el.classList.toggle('active', el.dataset.theme === val.tableTheme); });
+                }
+
+                // TẢI THỨ TỰ CỘT TÙY CHỈNH TỪ CLOUD
+                if (val.customColumnOrder && Array.isArray(val.customColumnOrder)) {
+                    state.customColumnOrder = val.customColumnOrder;
+                    localStorage.setItem('vox_custom_column_order', JSON.stringify(val.customColumnOrder));
                 }
 
                 if (restored.length > 0) {

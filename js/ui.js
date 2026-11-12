@@ -168,8 +168,18 @@ function renderTable() {
         
         let cursorStyle = c.key === 'stt' ? 'default' : 'pointer';
         let onclickAttr = c.key === 'stt' ? '' : `onclick="window.handleSort('${c.key}')"`;
+        
+        // CẢI TIẾN: Thêm thuộc tính draggable cho các cột test_
+        let isTestCol = c.key.startsWith('test_');
+        let draggableAttr = isTestCol ? `draggable="true" ondragstart="window.handleHeaderDragStart(event, '${c.key}')" ondragover="window.handleHeaderDragOver(event)" ondrop="window.handleHeaderDrop(event, '${c.key}')" ondragend="window.handleHeaderDragEnd(event)"` : '';
+        let dragHandle = isTestCol ? `<svg class="drag-handle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; margin-right: 4px; color: var(--text-muted);"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>` : '';
 
-        return `<th class="${groupEndClass} ${alignClass} ${stickyClass}" style="${stickyStyle} cursor: ${cursorStyle};" ${onclickAttr}>${c.label}${sortIcon}</th>`;
+        return `<th class="${groupEndClass} ${alignClass} ${stickyClass}" style="${stickyStyle} cursor: ${cursorStyle};" ${onclickAttr} ${draggableAttr}>
+            <div style="display: inline-flex; align-items: center; justify-content: center;">
+                ${dragHandle}
+                <span>${c.label}${sortIcon}</span>
+            </div>
+        </th>`;
     }).join('');
     
     thead.innerHTML = `<tr class="tier-group">${row1HTML}</tr><tr class="tier-indicator">${row2HTML}</tr>`;

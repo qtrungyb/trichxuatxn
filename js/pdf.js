@@ -37,7 +37,6 @@ async function extractDataFromSinglePDF(file) {
             const page = await pdf.getPage(pageNum);
             const textContent = await page.getTextContent();
             
-            // --- CẢI TIẾN: Gom nhóm theo tọa độ Y với sai số 8px để tránh cắt dòng sai ---
             let lines = [];
             textContent.items.forEach(item => {
                 if (!item.str.trim()) return;
@@ -67,7 +66,6 @@ async function extractDataFromSinglePDF(file) {
             if (catMatch) { currentCategory = catMatch[1].replace(/\(.*?\)/g, '').trim(); return; }
             if (line.match(/^(Huyết học|Hóa sinh|Nước tiểu|Vi sinh)/i)) { currentCategory = "Xét nghiệm " + line.replace(/\(.*?\)/g, '').trim(); return; }
             
-            // --- CẢI TIẾN: Trích xuất Họ tên linh hoạt hơn (không cần chữ Tuổi cùng dòng) ---
             if (line.includes('Họ và tên:')) {
                 let mTen = line.match(/Họ và tên:\s*([^:]+?)(?:\s+(?:Địa chỉ|Khoa|Chẩn đoán|Giới tính|Tuổi|Ngày|Giờ|Đối tượng)|$)/i);
                 if (mTen) data.hoTen = mTen[1].trim();
@@ -90,7 +88,6 @@ async function extractDataFromSinglePDF(file) {
                 let testName = match[2].trim().replace(/\s+/g, ' ');
                 let testResult = match[3].trim();
                 
-                // --- CẢI TIẾN: Loại bỏ nếu tên xét nghiệm chỉ là dãy số (tránh rác do tách dòng) ---
                 if (!/^[\d.,]+$/.test(testName)) {
                     if (!data.tests[testName]) { 
                         data.tests[testName] = testResult; 
