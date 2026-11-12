@@ -32,41 +32,71 @@ async function extractDataFromSinglePDF(file) {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         let fullTextLines = [];
+        
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
             const page = await pdf.getPage(pageNum);
             const textContent = await page.getTextContent();
-            let lines = {};
+            
+            // --- CẢI TIẾN: Gom nhóm theo tọa độ Y với sai số 8px để tránh cắt dòng sai ---
+            let lines = [];
             textContent.items.forEach(item => {
-                let y = Math.round(item.transform[5]);
-                if (!lines[y]) lines[y] = [];
-                lines[y].push(item);
+                if (!item.str.trim()) return;
+                let y = item.transform[5];
+                let x = item.transform[4];
+                
+                let foundLine = lines.find(line => Math.abs(line.y - y) <= 8);
+                if (foundLine) {
+                    foundLine.items.push({ text: item.str, x: x });
+                } else {
+                    lines.push({ y: y, items: [{ text: item.str, x: x }] });
+                }
             });
-            let sortedY = Object.keys(lines).map(Number).sort((a, b) => b - a);
-            sortedY.forEach(y => {
-                let lineStr = lines[y].sort((a, b) => a.transform[4] - b.transform[4]).map(item => item.str).join(' ').replace(/\s+/g, ' ').trim();
+            
+            lines.sort((a, b) => b.y - a.y);
+            lines.forEach(line => {
+                let lineStr = line.items.sort((a, b) => a.x - b.x).map(item => item.text).join(' ').replace(/\s+/g, ' ').trim();
                 if (lineStr) fullTextLines.push(lineStr);
             });
         }
+        
         let data = { hoTen: '', tuoi: '', gioiTinh: '', tests: {}, testCategories: {} };
         let currentCategory = "Xét nghiệm khác";
+        
         fullTextLines.forEach(line => {
             let catMatch = line.match(/^(Xét nghiệm\s+(?:huyết học|Vi sinh|hóa sinh|nước tiểu|đông máu|miễn dịch).*)/i);
             if (catMatch) { currentCategory = catMatch[1].replace(/\(.*?\)/g, '').trim(); return; }
             if (line.match(/^(Huyết học|Hóa sinh|Nước tiểu|Vi sinh)/i)) { currentCategory = "Xét nghiệm " + line.replace(/\(.*?\)/g, '').trim(); return; }
+            
+            // --- CẢI TIẾN: Trích xuất Họ tên linh hoạt hơn (không cần chữ Tuổi cùng dòng) ---
             if (line.includes('Họ và tên:')) {
-                let mTen = line.match(/Họ và tên:\s*(.*?)\s*Tuổi:/i); if (mTen) data.hoTen = mTen[1].trim();
+                let mTen = line.match(/Họ và tên:\s*([^:]+?)(?:\s+(?:Địa chỉ|Khoa|Chẩn đoán|Giới tính|Tuổi|Ngày|Giờ|Đối tượng)|$)/i);
+                if (mTen) data.hoTen = mTen[1].trim();
+            }
+            if (line.includes('Tuổi:')) {
                 let mTuoi = line.match(/Tuổi:\s*(\d+)/i); if (mTuoi) data.tuoi = mTuoi[1].trim();
+            }
+            if (line.includes('Giới tính:')) {
                 let mGT = line.match(/Giới tính:\s*(Nam|Nữ)/i); if (mGT) data.gioiTinh = mGT[1].trim();
             }
+            
             if (line.match(/^(STT|Tên xét nghiệm|Xét nghiệm|Ngày|Trang|Kết quả in đậm)/i)) return;
             if (line.includes('KHOA XÉT NGHIỆM') || line.includes('Người thực hiện')) return;
+            
             let cleanLine = line.replace(/^\s+|\s+$/g, '');
             let resultPattern = /((?:\+\/-|\+|\-)(?:\s*(?:neg|norm|[\d.,]+[A-Za-z%\/\^0-9]*))?|[\d.,]+[A-Za-z%\/\^0-9]*|Âm\s*tính|Dương\s*tính|neg|norm(?:\s*[\d.,]+[A-Za-z%\/\^0-9]*)?|Bình\s*thường|Không\s*phát\s*hiện|\(\+\)|\(-\))/i;
             let match = cleanLine.match(new RegExp(`^(\\d+)\\s+(.*?)\\s+${resultPattern.source}\\s+(.*)$`, 'i'));
+            
             if (match) {
                 let testName = match[2].trim().replace(/\s+/g, ' ');
                 let testResult = match[3].trim();
-                if (!data.tests[testName]) { data.tests[testName] = testResult; data.testCategories[testName] = currentCategory; }
+                
+                // --- CẢI TIẾN: Loại bỏ nếu tên xét nghiệm chỉ là dãy số (tránh rác do tách dòng) ---
+                if (!/^[\d.,]+$/.test(testName)) {
+                    if (!data.tests[testName]) { 
+                        data.tests[testName] = testResult; 
+                        data.testCategories[testName] = currentCategory; 
+                    }
+                }
             }
         });
         return data;
