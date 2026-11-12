@@ -40,6 +40,15 @@ function loadFromFirebase() {
         const ref = state.firebaseDb.ref('workspaces/' + deviceId);
         ref.once('value').then(snapshot => {
             const val = snapshot.val();
+
+            // ===== CHỐNG HỒI SINH DỮ LIỆU ĐÃ XÓA =====
+            // Bản ghi cloud được ghi trước (hoặc đúng lúc) lần xóa gần nhất => bỏ qua.
+            const lastClearedAt = Number(localStorage.getItem('vox_last_cleared_at') || 0);
+            const cloudUpdatedAt = Number((val && val.updatedAt) || 0);
+            if (lastClearedAt && cloudUpdatedAt <= lastClearedAt) {
+                scheduleFirebaseSync(0);   // đẩy trạng thái hiện tại (rỗng) lên cloud
+                return;
+            }
             if (val && val.currentData) {
                 const restored = desanitizeDataFromFirebase(val.currentData);
                 
@@ -85,11 +94,13 @@ function scheduleLocalSave(delay = 200) {
 }
 
 function persistChanges(immediate = false) {
-    if (immediate) { 
+    if (immediate) {
         try { localStorage.setItem('vox_current_data', JSON.stringify(state.currentData)); } catch (e) {}
-        scheduleFirebaseSync(0); 
+        scheduleFirebaseSync(0);
+    } else {
+        scheduleLocalSave(200);
+        scheduleFirebaseSync(1000);
     }
-    else { scheduleLocalSave(200); scheduleFirebaseSync(1000); }
 }
 
 function saveHistoryToFirebase(record) {

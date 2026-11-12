@@ -184,14 +184,28 @@ window.toggleColumn = (key, checkbox) => {
 
 window.clearCurrentWorkspace = () => {
     if(!confirm("Bạn có chắc chắn muốn xóa toàn bộ dữ liệu hiện tại?")) return;
-    state.currentData = []; state.dynamicTestCols = []; state.customColumnOrder = [];
+
+    state.currentData = [];
+    state.dynamicTestCols = [];
+    state.customColumnOrder = [];
+    state.sortCol = null;
+    state.sortDir = 'asc';
+    state.previewHistoryId = null;
+
     localStorage.removeItem('vox_custom_column_order');
+    localStorage.setItem('vox_current_data', '[]');
+    // Đánh dấu thời điểm xóa: mọi bản ghi cloud cũ hơn mốc này sẽ bị bỏ qua khi load
+    localStorage.setItem('vox_last_cleared_at', String(Date.now()));
+
     document.getElementById('progressContainer').style.transform = 'translateY(-150%)';
     document.getElementById('statusPillBtn').style.display = 'none';
     document.getElementById('pdfFileInputHero').value = '';
     document.getElementById('pdfFileInputCompact').value = '';
+
     renderTable();
-    persistChanges(true);
+    persistChanges(true);        // lưu local + hẹn sync
+    clearWorkspaceOnCloud();     // xóa cloud NGAY, hủy timer debounce đang chờ
+
     showToast("Đã làm mới bảng dữ liệu!");
 };
 
