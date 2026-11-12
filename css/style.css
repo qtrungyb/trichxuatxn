@@ -31,14 +31,20 @@ body.dark-mode {
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background-color: var(--bg-body); color: var(--text-main);
-    min-height: 100vh; display: flex; flex-direction: column;
-    font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+
+/* SỬA LỖI TẠI ĐÂY: Khóa cứng chiều cao toàn trang */
+html, body {
+    height: 100vh;
+    max-height: 100vh;
     overflow: hidden;
 }
 
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--bg-body); color: var(--text-main);
+    display: flex; flex-direction: column;
+    font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+}
 .svg-icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; flex-shrink: 0; }
 .svg-icon-sm { width: 14px; height: 14px; }
 .svg-icon-lg { width: 24px; height: 24px; }
@@ -107,7 +113,15 @@ body {
     flex: 1; display: flex; flex-direction: column;
     width: 100%; max-width: 1600px; margin: 0 auto; padding: 24px;
     position: relative; overflow: hidden;
+    min-height: 0; 
 }
+
+.tab-content {
+    display: none; flex-direction: column; gap: 16px; flex: 1;
+    animation: fadeIn 0.2s ease-out;
+    min-height: 0; /* BẮT BUỘC: Ép flexbox không tự phình to */
+}
+.tab-content.active { display: flex; }
 
 .upload-hero-container {
     flex: 1; display: flex; align-items: center; justify-content: center;
@@ -133,7 +147,9 @@ body {
 
 .data-workspace {
     flex: 1; display: none; flex-direction: column; gap: 16px;
-    animation: fadeIn 0.3s ease-out; height: 100%;
+    animation: fadeIn 0.3s ease-out;
+    min-height: 0; 
+    overflow: hidden;
 }
 .data-workspace.active { display: flex; }
 
@@ -252,10 +268,13 @@ body {
 /* ================= TABLE ================= */
 .table-container {
     flex: 1; background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 12px; overflow: auto; box-shadow: var(--shadow-sm);
+    border-radius: 12px; 
+    overflow: auto; /* Thanh cuộn sẽ xuất hiện ở đây */
+    box-shadow: var(--shadow-sm);
     scrollbar-width: thin; scrollbar-color: var(--border) transparent;
     position: relative;
     z-index: 10;
+    min-height: 0; 
 }
 .table-container::-webkit-scrollbar { width: 8px; height: 8px; }
 .table-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
