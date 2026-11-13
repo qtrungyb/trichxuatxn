@@ -682,3 +682,14 @@ body.dark-mode.theme-grad-cosmic {
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+/* Feature C: kết quả ngoài khoảng tham chiếu — chỉ đổi màu chữ + in đậm */
+.val-high {
+    font-weight: 700;
+    color: #dc2626;
+}
+.val-low {
+    font-weight: 700;
+    color: #2563eb;
+}
+body.dark-mode .val-high { color: #f87171; }
+body.dark-mode .val-low  { color: #60a5fa; }
