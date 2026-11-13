@@ -28,7 +28,7 @@ function closeAllDrawers() {
     document.getElementById('historyToggleBtn').classList.remove('active');
 }
 
-function toggleFileDrawer() { 
+function toggleFileDrawer() {
     const drawer = document.getElementById('progressContainer');
     if(drawer.style.transform === 'translateY(0px)') {
         drawer.style.transform = 'translateY(-150%)';
@@ -72,10 +72,10 @@ function updateWorkspaceStats() {
     const activeCount = allCols.filter(c => state.activeColumns.includes(c.key)).length;
     document.getElementById('statPatientsCount').innerText = state.currentData.length;
     document.getElementById('statColumnsCount').innerText = `${activeCount}/${allCols.length}`;
-    
+
     const heroView = document.getElementById('uploadHeroContainer');
     const dataView = document.getElementById('dataWorkspace');
-    
+
     if (state.currentData.length > 0) {
         heroView.style.display = 'none';
         dataView.classList.add('active');
@@ -89,22 +89,22 @@ function renderTable() {
     updateWorkspaceStats();
     const thead = document.getElementById('tableHead');
     const tbody = document.getElementById('tableBody');
-    
+
     if (state.currentData.length === 0) {
         thead.innerHTML = '';
         tbody.innerHTML = '';
         return;
     }
-    
+
     let activeCols = getSortedActiveCols();
     if (activeCols.length === 0) {
         thead.innerHTML = '';
         tbody.innerHTML = `<tr><td colspan="10" class="empty-table">Chưa có cột dữ liệu nào được chọn. Hãy bấm <b>Cột dữ liệu</b> để chọn.</td></tr>`;
         return;
     }
-    
+
     let displayCols = [{ key: 'stt', label: 'STT', category: 'Thông tin Hành chính' }, ...activeCols];
-    
+
     let groupedCols = [], currentGroup = null;
     displayCols.forEach(col => {
         let catName = col.category || 'Thông tin Hành chính';
@@ -114,19 +114,19 @@ function renderTable() {
         }
         currentGroup.count++;
     });
-    
-     let row1HTML = groupedCols.map(g => {
+
+    let row1HTML = groupedCols.map(g => {
         let formattedName = formatCategoryName(g.name);
         let stickyClass = '';
         let stickyStyle = '';
-        
+
         if (g.name === 'Thông tin Hành chính') {
             stickyClass = 'col-sticky col-sticky-last';
             stickyStyle = 'left: 0px; min-width: 410px; max-width: 410px;';
         }
 
         let borderClass = g.dotClass ? 'group-border-' + g.dotClass.replace('dot-', '') : 'group-border-khac';
-        
+
         return `
         <th colspan="${g.count}" class="${stickyClass} ${borderClass}" style="${stickyStyle}">
             <span class="cat-group-title">
@@ -135,12 +135,12 @@ function renderTable() {
         </th>
         `;
     }).join('');
-    
+
     let stickyOffset = 0;
     let row2HTML = displayCols.map((c, i) => {
         let isGroupEnd = (i === displayCols.length - 1) || (displayCols[i+1].category !== c.category);
         let groupEndClass = isGroupEnd ? 'col-group-end' : '';
-        
+
         let alignClass = 'text-center';
         if (c.key === 'hoTen') alignClass = 'text-left';
 
@@ -149,14 +149,14 @@ function renderTable() {
         if (c.category === 'Thông tin Hành chính') {
             stickyClass = 'col-sticky';
             stickyStyle = `left: ${stickyOffset}px;`;
-            
+
             let width = 0;
             if (c.key === 'stt') width = 50;
             else if (c.key === 'hoTen') width = 200;
             else if (c.key === 'tuoi') width = 70;
             else if (c.key === 'gioiTinh') width = 90;
             stickyOffset += width;
-            
+
             if (isGroupEnd) stickyClass += ' col-sticky-last';
             stickyStyle += ` min-width: ${width}px; max-width: ${width}px;`;
         }
@@ -165,11 +165,10 @@ function renderTable() {
         if (state.sortCol === c.key) {
             sortIcon = state.sortDir === 'asc' ? ' <span style="font-size:10px;">▲</span>' : ' <span style="font-size:10px;">▼</span>';
         }
-        
+
         let cursorStyle = c.key === 'stt' ? 'default' : 'pointer';
         let onclickAttr = c.key === 'stt' ? '' : `onclick="window.handleSort('${c.key}')"`;
-        
-        // CẢI TIẾN: Thêm thuộc tính draggable cho các cột test_
+
         let isTestCol = c.key.startsWith('test_');
         let draggableAttr = isTestCol ? `draggable="true" ondragstart="window.handleHeaderDragStart(event, '${c.key}')" ondragover="window.handleHeaderDragOver(event)" ondrop="window.handleHeaderDrop(event, '${c.key}')" ondragend="window.handleHeaderDragEnd(event)"` : '';
         let dragHandle = isTestCol ? `<svg class="drag-handle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; margin-right: 4px; color: var(--text-muted);"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>` : '';
@@ -181,9 +180,9 @@ function renderTable() {
             </div>
         </th>`;
     }).join('');
-    
+
     thead.innerHTML = `<tr class="tier-group">${row1HTML}</tr><tr class="tier-indicator">${row2HTML}</tr>`;
-    
+
     tbody.innerHTML = state.currentData.map((row, rowIndex) => {
         let stickyOffset = 0;
         let tds = displayCols.map((col, i) => {
@@ -202,7 +201,7 @@ function renderTable() {
 
             let isGroupEnd = (i === displayCols.length - 1) || (displayCols[i+1].category !== col.category);
             let groupEndClass = isGroupEnd ? 'col-group-end' : '';
-            
+
             let alignClass = 'text-center';
             if (col.key === 'hoTen') alignClass = 'text-left';
 
@@ -211,14 +210,14 @@ function renderTable() {
             if (col.category === 'Thông tin Hành chính') {
                 stickyClass = 'col-sticky';
                 stickyStyle = `left: ${stickyOffset}px;`;
-                
+
                 let width = 0;
                 if (col.key === 'stt') width = 50;
                 else if (col.key === 'hoTen') width = 200;
                 else if (col.key === 'tuoi') width = 70;
                 else if (col.key === 'gioiTinh') width = 90;
                 stickyOffset += width;
-                
+
                 if (isGroupEnd) stickyClass += ' col-sticky-last';
                 stickyStyle += ` min-width: ${width}px; max-width: ${width}px;`;
             }
@@ -233,18 +232,39 @@ function renderTable() {
                         displayVal = `<span class="badge-danger">${val}</span>`;
                     } else if (lowerVal.includes('âm tính') || lowerVal === 'negative' || lowerVal === '-') {
                         displayVal = `<span class="badge-success">${val}</span>`;
-                    }
+                    } else if (col.key.startsWith('test_')) {
+						// ===== Feature C: so sánh khoảng tham chiếu =====
+						let actualKey = col.key.replace('test_', '');
+						let ref = row.testRefRanges && row.testRefRanges[actualKey];
+						if (ref) {
+							let numVal = parseFloat(String(val).trim().replace(',', '.'));
+							if (Number.isFinite(numVal)) {
+								let isLow  = (ref.min !== null && ref.min !== undefined && numVal < ref.min);
+								let isHigh = (ref.max !== null && ref.max !== undefined && numVal > ref.max);
+								if (isLow || isHigh) {
+									let rangeStr = (ref.min !== null && ref.max !== null)
+										? `${ref.min} - ${ref.max}`
+										: (ref.min !== null ? `≥ ${ref.min}` : `≤ ${ref.max}`);
+									let suffix = isLow ? 'thấp' : 'cao';
+									let cls    = isLow ? 'val-low' : 'val-high';
+									displayVal = `<span class="${cls}" title="Khoảng tham chiếu: ${rangeStr} (${suffix})">${val}</span>`;
+								}
+							}
+						}
+					}
                 }
             }
-            
+
             let contentEditableAttr = col.key === 'stt' ? 'false' : 'true';
             let oninputAttr = col.key === 'stt' ? '' : `oninput="window.updateData(${rowIndex}, '${col.key}', this.innerText)"`;
-            
-            return `<td class="${cellClass} ${groupEndClass} ${alignClass} ${stickyClass}" style="${stickyStyle}" contenteditable="${contentEditableAttr}" spellcheck="false" data-row="${rowIndex}" data-col-index="${i}" data-key="${col.key}" ${oninputAttr}>${displayVal}</td>`;
+            let onblurAttr = (col.key !== 'stt' && col.key.startsWith('test_'))
+                ? `onblur="window.refreshCellAbnormal(this, ${rowIndex}, '${col.key}')"` : '';
+
+            return `<td class="${cellClass} ${groupEndClass} ${alignClass} ${stickyClass}" style="${stickyStyle}" contenteditable="${contentEditableAttr}" spellcheck="false" data-row="${rowIndex}" data-col-index="${i}" data-key="${col.key}" ${oninputAttr} ${onblurAttr}>${displayVal}</td>`;
         }).join('');
         return `<tr>${tds}</tr>`;
     }).join('');
-    
+
     setupCrosshairHover();
 }
 
@@ -259,9 +279,9 @@ function setupCrosshairHover() {
         let colIndex = td.getAttribute('data-col-index');
 
         table.querySelectorAll('td, tr').forEach(el => el.classList.remove('cell-hover', 'row-hover'));
-        
+
         if (tr) tr.classList.add('row-hover');
-        
+
         if (colIndex !== null) {
             table.querySelectorAll(`td[data-col-index="${colIndex}"]`).forEach(el => el.classList.add('cell-hover'));
         }
@@ -289,7 +309,7 @@ function renderColumnDrawer() {
 
     cats.forEach(cat => {
         let cols = cat === "Thông tin Hành chính" ? [...BASE_COLUMNS] : state.dynamicTestCols.filter(c => c.category === cat);
-        
+
         cols.sort((a, b) => {
             let aSelected = state.activeColumns.includes(a.key) ? 1 : 0;
             let bSelected = state.activeColumns.includes(b.key) ? 1 : 0;
@@ -303,11 +323,11 @@ function renderColumnDrawer() {
 
         let dotClass = getDotClass(cat);
         html += `<div class="setting-cat-title"><span class="color-dot ${dotClass}"></span> ${formatCategoryName(cat)}</div>`;
-        
+
         cols.forEach(col => {
             let isChecked = state.activeColumns.includes(col.key);
-            let sampleVal = (col.key === 'hoTen' || col.key === 'tuoi' || col.key === 'gioiTinh') 
-                ? (state.currentData[0] ? state.currentData[0][col.key] : '-') 
+            let sampleVal = (col.key === 'hoTen' || col.key === 'tuoi' || col.key === 'gioiTinh')
+                ? (state.currentData[0] ? state.currentData[0][col.key] : '-')
                 : (col.sampleResult || '-');
             html += `
                 <label class="setting-item">
@@ -321,7 +341,7 @@ function renderColumnDrawer() {
 
     if (html === '') html = '<div style="text-align:center; padding: 20px; color: var(--text-muted);">Không tìm thấy chỉ số phù hợp.</div>';
     listEl.innerHTML = html;
-    
+
     const allCols = getAllColumns();
     document.getElementById('modalSelectedSummary').innerText = allCols.filter(c => state.activeColumns.includes(c.key)).length;
 }

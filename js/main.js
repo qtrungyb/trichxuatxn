@@ -13,20 +13,20 @@ window.setTableTheme = (theme) => {
     Array.from(document.body.classList).forEach(cls => {
         if (cls.startsWith('theme-')) document.body.classList.remove(cls);
     });
-    
+
     if (theme !== 'default') {
         document.body.classList.add('theme-' + theme);
     }
-    
+
     localStorage.setItem('vox_table_theme', theme);
     state.tableTheme = theme;
-    
+
     document.querySelectorAll('#themeMenu .dropdown-item').forEach(el => {
         el.classList.toggle('active', el.dataset.theme === theme);
     });
-    
+
     document.getElementById('themeMenu').classList.remove('show');
-    
+
     if (typeof persistChanges === 'function') persistChanges(true);
 };
 
@@ -42,7 +42,7 @@ window.handleHeaderDragStart = (e, key) => {
 };
 
 window.handleHeaderDragOver = (e) => {
-    e.preventDefault(); 
+    e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
 };
 
@@ -51,16 +51,15 @@ window.handleHeaderDragEnd = (e) => {
     setTimeout(() => { isDraggingCol = false; }, 100);
 };
 
+/** Fix B: rebuild từ getSortedActiveCols() để luôn đầy đủ. */
 window.handleHeaderDrop = (e, targetKey) => {
     e.preventDefault();
     e.currentTarget.style.opacity = '1';
 
     if (!draggedColKey || draggedColKey === targetKey) return;
 
-    // Lấy đúng thứ tự đang hiển thị (gồm cả cột mới nếu có)
     let order = getSortedActiveCols().map(c => c.key);
 
-    // Giữ luôn vị trí các cột đang ẩn trong customColumnOrder cũ
     [...state.customColumnOrder].forEach(k => {
         if (!order.includes(k)) order.push(k);
     });
@@ -80,14 +79,14 @@ window.handleHeaderDrop = (e, targetKey) => {
 
 window.handleSort = (colKey) => {
     if (isDraggingCol) return;
-    
+
     if (state.sortCol === colKey) {
         state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
     } else {
         state.sortCol = colKey;
         state.sortDir = 'asc';
     }
-    
+
     state.currentData.sort((a, b) => {
         let getVal = (row) => {
             if (colKey.startsWith('test_')) {
@@ -96,23 +95,23 @@ window.handleSort = (colKey) => {
                 return row[colKey] || '';
             }
         };
-        
+
         let valA = getVal(a);
         let valB = getVal(b);
-        
+
         let numA = parseFloat(valA);
         let numB = parseFloat(valB);
-        
+
         if (!isNaN(numA) && !isNaN(numB)) {
             return state.sortDir === 'asc' ? numA - numB : numB - numA;
         }
-        
+
         if (typeof valA === 'string' && typeof valB === 'string') {
             return state.sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
         }
         return 0;
     });
-    
+
     renderTable();
 };
 
@@ -146,7 +145,7 @@ document.addEventListener('click', (e) => {
 });
 
 window.updateData = (rowIndex, key, newValue) => {
-    if (newValue === '-') newValue = ''; 
+    if (newValue === '-') newValue = '';
     if (key.startsWith('test_')) {
         let actualKey = key.replace('test_', '');
         state.currentData[rowIndex].tests[actualKey] = newValue;
@@ -154,14 +153,71 @@ window.updateData = (rowIndex, key, newValue) => {
     persistChanges(false);
 };
 
+/**
+ * Feature C: Re-evaluate 1 cell khi user rời focus — cập nhật badge
+ * abnormal/text-badge/empty hiển thị ngay, không cần re-render cả bảng.
+ */
+window.refreshCellAbnormal = function(td, rowIndex, colKey) {
+    if (!colKey.startsWith('test_')) return;
+    let actualKey = colKey.replace('test_', '');
+    let row = state.currentData[rowIndex];
+    if (!row) return;
+
+    let newVal = (td.innerText || '').trim();
+    if (newVal === '-') newVal = ''; // empty-cell hiển thị dấu '-' → coi là rỗng
+
+    if (!row.tests) row.tests = {};
+    row.tests[actualKey] = newVal;
+
+    if (newVal === '') {
+        td.innerHTML = '<span class="empty-cell">-</span>';
+        persistChanges(false);
+        return;
+    }
+
+    let lowerVal = newVal.toLowerCase();
+    if (lowerVal.includes('dương tính') || lowerVal === 'positive' || lowerVal === '+') {
+        td.innerHTML = `<span class="badge-danger">${newVal}</span>`;
+        persistChanges(false);
+        return;
+    }
+    if (lowerVal.includes('âm tính') || lowerVal === 'negative' || lowerVal === '-') {
+        td.innerHTML = `<span class="badge-success">${newVal}</span>`;
+        persistChanges(false);
+        return;
+    }
+
+    let ref = row.testRefRanges && row.testRefRanges[actualKey];
+		if (ref) {
+			let numVal = parseFloat(newVal.replace(',', '.'));
+			if (Number.isFinite(numVal)) {
+				let isLow  = (ref.min !== null && ref.min !== undefined && numVal < ref.min);
+				let isHigh = (ref.max !== null && ref.max !== undefined && numVal > ref.max);
+				if (isLow || isHigh) {
+					let rangeStr = (ref.min !== null && ref.max !== null)
+						? `${ref.min} - ${ref.max}`
+						: (ref.min !== null ? `≥ ${ref.min}` : `≤ ${ref.max}`);
+					let suffix = isLow ? 'thấp' : 'cao';
+					let cls    = isLow ? 'val-low' : 'val-high';
+					td.innerHTML = `<span class="${cls}" title="Khoảng tham chiếu: ${rangeStr} (${suffix})">${newVal}</span>`;
+					persistChanges(false);
+					return;
+				}
+			}
+		}
+
+    td.innerText = newVal;
+    persistChanges(false);
+};
+
 window.applyPreset = (presetType) => {
     if (presetType === 'clear') state.activeColumns = [];
     else if (presetType === 'all') state.activeColumns = getAllColumns().map(c => c.key);
     else if (presetType === 'default') state.activeColumns = getDefaultColumns();
-    
+
     state.activeColumns = [...new Set(state.activeColumns)];
     localStorage.setItem('vox_all_active_columns', JSON.stringify(state.activeColumns));
-    renderColumnDrawer(); 
+    renderColumnDrawer();
     renderTable();
     scheduleFirebaseSync();
 };
@@ -172,13 +228,14 @@ window.toggleColumn = (key, checkbox) => {
     localStorage.setItem('vox_all_active_columns', JSON.stringify(state.activeColumns));
     renderTable();
     scheduleFirebaseSync();
-    
+
     const allCols = getAllColumns();
     document.getElementById('modalSelectedSummary').innerText = allCols.filter(c => state.activeColumns.includes(c.key)).length;
 };
 
+/** Fix A: clear với tombstone + xoá cloud ngay. */
 window.clearCurrentWorkspace = () => {
-    if(!confirm("Bạn có chắc chắn muốn xóa toàn bộ dữ liệu hiện tại?")) return;
+    if (!confirm("Bạn có chắc chắn muốn xóa toàn bộ dữ liệu hiện tại?")) return;
 
     state.currentData = [];
     state.dynamicTestCols = [];
@@ -189,7 +246,7 @@ window.clearCurrentWorkspace = () => {
 
     localStorage.removeItem('vox_custom_column_order');
     localStorage.setItem('vox_current_data', '[]');
-    // Đánh dấu thời điểm xóa: mọi bản ghi cloud cũ hơn mốc này sẽ bị bỏ qua khi load
+    // Tombstone: bản ghi cloud cũ hơn mốc này sẽ bị bỏ qua khi load
     localStorage.setItem('vox_last_cleared_at', String(Date.now()));
 
     document.getElementById('progressContainer').style.transform = 'translateY(-150%)';
@@ -198,12 +255,13 @@ window.clearCurrentWorkspace = () => {
     document.getElementById('pdfFileInputCompact').value = '';
 
     renderTable();
-    persistChanges(true);        // lưu local + hẹn sync
-    clearWorkspaceOnCloud();     // xóa cloud NGAY, hủy timer debounce đang chờ
+    persistChanges(true);
+    clearWorkspaceOnCloud(); // Xoá cloud NGAY, huỷ timer debounce
 
     showToast("Đã làm mới bảng dữ liệu!");
 };
 
+/** Fix B: deep copy + lưu layout. */
 window.saveToHistory = () => {
     if (state.currentData.length === 0) return showToast("Không có dữ liệu để lưu!", true);
     let history = JSON.parse(localStorage.getItem('vox_history')) || [];
@@ -211,9 +269,9 @@ window.saveToHistory = () => {
         id: Date.now(),
         time: new Date().toLocaleString('vi-VN'),
         count: state.currentData.length,
-        data: JSON.parse(JSON.stringify(state.currentData)),   // deep copy
-        customColumnOrder: [...state.customColumnOrder],       // LƯU layout
-        activeColumns: [...state.activeColumns]                // LƯU layout
+        data: JSON.parse(JSON.stringify(state.currentData)),
+        customColumnOrder: [...state.customColumnOrder],
+        activeColumns: [...state.activeColumns]
     };
     history.unshift(newRecord);
     localStorage.setItem('vox_history', JSON.stringify(history));
@@ -247,7 +305,7 @@ window.renderHistory = function() {
         const isConfirmingDelete = (state.pendingDeleteHistoryId === item.id);
         const visiblePatients = data.slice(0, 3);
         const remaining = count - visiblePatients.length;
-        const patientChips = visiblePatients.map(p => `<span class="patient-chip">${p.hoTen || 'BN'}</span>`).join('') + 
+        const patientChips = visiblePatients.map(p => `<span class="patient-chip">${p.hoTen || 'BN'}</span>`).join('') +
                              (remaining > 0 ? `<span class="patient-chip" style="background:var(--primary-light);color:var(--primary);">+${remaining}</span>` : '');
 
         return `
@@ -269,6 +327,7 @@ window.renderHistory = function() {
     }).join('');
 };
 
+/** Fix B: khôi phục cả layout, ghi lại localStorage để F5 vẫn giữ. */
 window.loadHistory = (id) => {
     let history = JSON.parse(localStorage.getItem('vox_history')) || [];
     let record = history.find(item => item.id === id);
@@ -277,7 +336,6 @@ window.loadHistory = (id) => {
     state.currentData = JSON.parse(JSON.stringify(record.data || []));
     rebuildDynamicColumns();
 
-    // Khôi phục layout nếu bản ghi có (backwards-compat với bản ghi cũ)
     if (Array.isArray(record.customColumnOrder) && record.customColumnOrder.length > 0) {
         state.customColumnOrder = [...record.customColumnOrder];
     }
@@ -287,7 +345,6 @@ window.loadHistory = (id) => {
         state.activeColumns = getDefaultColumns();
     }
 
-    // Ghi lại localStorage để F5 vẫn giữ
     localStorage.setItem('vox_custom_column_order', JSON.stringify(state.customColumnOrder));
     localStorage.setItem('vox_all_active_columns', JSON.stringify(state.activeColumns));
 
@@ -354,10 +411,10 @@ window.restoreFromPreview = () => {
 document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('vox_dark_mode') === 'true') { document.body.classList.add('dark-mode'); updateDarkModeIcon(true); }
     if (localStorage.getItem('vox_compact_mode') === 'true') { document.body.classList.add('compact-mode'); }
-    
+
     const savedTheme = localStorage.getItem('vox_table_theme') || 'default';
     window.setTableTheme(savedTheme);
-    
+
     if (state.activeColumns.length === 0) state.activeColumns = BASE_COLUMNS.map(c => c.key);
     try {
         const savedData = JSON.parse(localStorage.getItem('vox_current_data') || '[]');
@@ -367,7 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!state.activeColumns || state.activeColumns.length === 0) state.activeColumns = getDefaultColumns();
         }
     } catch (e) {}
-    
+
     renderTable();
     renderHistory();
     setupDragAndDrop();

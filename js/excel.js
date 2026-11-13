@@ -2,7 +2,7 @@ function copyTableData() {
     if (state.currentData.length === 0) return showToast("Không có dữ liệu để copy!", true);
     let activeCols = getSortedActiveCols();
     if (activeCols.length === 0) return showToast("Vui lòng chọn ít nhất 1 cột!", true);
-    
+
     let displayCols = [{ key: 'stt', label: 'STT', category: 'Thông tin Hành chính' }, ...activeCols];
 
     let groupedCols = [], currentGroup = null;
@@ -11,7 +11,7 @@ function copyTableData() {
         if (!currentGroup || currentGroup.name !== catName) { currentGroup = { name: catName, count: 0 }; groupedCols.push(currentGroup); }
         currentGroup.count++;
     });
-    
+
     const FONT_STYLE = "font-family: 'Times New Roman', Times, serif; font-size: 11pt;";
     let html = `<table border="1" cellspacing="0" cellpadding="0" style="border-collapse: collapse; text-align: center; ${FONT_STYLE}">`;
     html += `<tr>`;
@@ -19,26 +19,38 @@ function copyTableData() {
     html += `</tr><tr>`;
     displayCols.forEach(c => { html += `<th style="background-color: #ffffff; padding: 8px; ${FONT_STYLE} font-weight: bold; border: 1px solid #cbd5e1;">${c.label}</th>`; });
     html += `</tr>`;
-    
+
     state.currentData.forEach((row, idx) => {
         html += `<tr>`;
         displayCols.forEach(col => {
-            let val = '';
+            let val = '', extraStyle = '';
             if (col.key === 'stt') {
                 val = idx + 1;
             } else if (col.key.startsWith('test_')) {
                 let actualKey = col.key.replace('test_', '');
                 val = row.tests[actualKey] || '';
+                let ref = row.testRefRanges && row.testRefRanges[actualKey];
+                if (ref && val) {
+					let numVal = parseFloat(String(val).replace(',', '.'));
+					if (Number.isFinite(numVal)) {
+						let isLow  = (ref.min !== null && ref.min !== undefined && numVal < ref.min);
+						let isHigh = (ref.max !== null && ref.max !== undefined && numVal > ref.max);
+						if (isLow || isHigh) {
+							let color = isLow ? '#2563eb' : '#dc2626';   // low = blue, high = red
+							extraStyle = `font-weight: bold; color: ${color};`;
+						}
+					}
+				}
             } else {
                 val = row[col.key] || '';
             }
             let align = col.key === 'hoTen' ? 'left' : 'center';
-            html += `<td style="padding: 6px 12px; border: 1px solid #cbd5e1; text-align: ${align}; ${FONT_STYLE}">${val}</td>`;
+            html += `<td style="padding: 6px 12px; border: 1px solid #cbd5e1; text-align: ${align}; ${FONT_STYLE} ${extraStyle}">${val}</td>`;
         });
         html += `</tr>`;
     });
     html += `</table>`;
-    
+
     let copyDiv = document.getElementById('hiddenCopyDiv');
     copyDiv.innerHTML = html;
     let range = document.createRange();
@@ -64,7 +76,7 @@ function exportExcel() {
 
     let wsData = [];
     let rowGroups = [], rowHeaders = [];
-    
+
     displayCols.forEach(col => {
         rowGroups.push(formatCategoryName(col.category));
         rowHeaders.push(col.label);
@@ -122,6 +134,31 @@ function exportExcel() {
             if (C === 1 && R > 1) {
                 cell.s.alignment.horizontal = "left";
             }
+
+            // Feature C: highlight bất thường trong Excel (không tô nền)
+			if (R >= 2) {
+				let colKey = displayCols[C] && displayCols[C].key;
+				if (colKey && colKey.startsWith('test_')) {
+					let actualKey = colKey.replace('test_', '');
+					let row = state.currentData[R - 2];
+					let ref = row && row.testRefRanges && row.testRefRanges[actualKey];
+					if (ref) {
+						let cellVal = cell.v;
+						if (cellVal !== '' && cellVal !== null && cellVal !== undefined) {
+							let numVal = parseFloat(String(cellVal).replace(',', '.'));
+							if (Number.isFinite(numVal)) {
+								let isLow  = (ref.min !== null && ref.min !== undefined && numVal < ref.min);
+								let isHigh = (ref.max !== null && ref.max !== undefined && numVal > ref.max);
+								if (isLow || isHigh) {
+									cell.s.font.bold = true;
+									cell.s.font.color = { rgb: isLow ? '2563EB' : 'DC2626' };
+									// KHÔNG set cell.s.fill → giữ nền trắng
+								}
+							}
+						}
+					}
+				}
+			}
         }
     }
 

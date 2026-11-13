@@ -21,16 +21,33 @@ function syncToFirebase() {
     try {
         const deviceId = getDeviceId();
         const ref = state.firebaseDb.ref('workspaces/' + deviceId);
-        const payload = { 
-            currentData: sanitizeDataForFirebase(state.currentData), 
-            activeColumns: state.activeColumns, 
-            updatedAt: Date.now(), 
+        const payload = {
+            currentData: sanitizeDataForFirebase(state.currentData),
+            activeColumns: state.activeColumns,
+            updatedAt: Date.now(),
             deviceId: deviceId,
             tableTheme: state.tableTheme,
-            customColumnOrder: state.customColumnOrder // THÊM DÒNG NÀY
+            customColumnOrder: state.customColumnOrder
         };
         ref.set(payload).catch(err => console.error('[Firebase] Sync failed:', err));
     } catch (e) { console.error('[Firebase] Sync exception:', e); }
+}
+
+/** Xoá workspace Cloud NGAY (không debounce), có đánh dấu updatedAt. */
+function clearWorkspaceOnCloud() {
+    if (state.firebaseInitState !== 'ready' || !state.firebaseDb) return Promise.resolve();
+    if (state.firebaseSaveTimer) { clearTimeout(state.firebaseSaveTimer); state.firebaseSaveTimer = null; }
+    try {
+        const deviceId = getDeviceId();
+        return state.firebaseDb.ref('workspaces/' + deviceId).set({
+            currentData: null,
+            activeColumns: state.activeColumns,
+            customColumnOrder: [],
+            tableTheme: state.tableTheme,
+            deviceId: deviceId,
+            updatedAt: Date.now()
+        }).catch(err => console.error('[Firebase] Clear failed:', err));
+    } catch (e) { console.error('[Firebase] Clear exception:', e); return Promise.resolve(); }
 }
 
 function loadFromFirebase() {
@@ -41,17 +58,17 @@ function loadFromFirebase() {
         ref.once('value').then(snapshot => {
             const val = snapshot.val();
 
-            // ===== CHỐNG HỒI SINH DỮ LIỆU ĐÃ XÓA =====
-            // Bản ghi cloud được ghi trước (hoặc đúng lúc) lần xóa gần nhất => bỏ qua.
+            // ===== FIX A: chống hồi sinh dữ liệu đã xoá =====
             const lastClearedAt = Number(localStorage.getItem('vox_last_cleared_at') || 0);
             const cloudUpdatedAt = Number((val && val.updatedAt) || 0);
             if (lastClearedAt && cloudUpdatedAt <= lastClearedAt) {
-                scheduleFirebaseSync(0);   // đẩy trạng thái hiện tại (rỗng) lên cloud
+                scheduleFirebaseSync(0);
                 return;
             }
+
             if (val && val.currentData) {
                 const restored = desanitizeDataFromFirebase(val.currentData);
-                
+
                 if (val.tableTheme && state.tableTheme !== val.tableTheme) {
                     state.tableTheme = val.tableTheme;
                     localStorage.setItem('vox_table_theme', val.tableTheme);
@@ -60,25 +77,24 @@ function loadFromFirebase() {
                     document.querySelectorAll('#themeMenu .dropdown-item').forEach(el => { el.classList.toggle('active', el.dataset.theme === val.tableTheme); });
                 }
 
-                // TẢI THỨ TỰ CỘT TÙY CHỈNH TỪ CLOUD
+                // ===== FIX B: chỉ dùng cloud khi local rỗng hoặc cloud đầy đủ hơn =====
                 if (val.customColumnOrder) {
-					const cloudOrder = firebaseArrayToArray(val.customColumnOrder);
-					const localOrder = JSON.parse(localStorage.getItem('vox_custom_column_order') || '[]');
-					// Chỉ dùng cloud khi local rỗng HOẶC cloud đầy đủ hơn local
-					if (cloudOrder.length > 0 && (localOrder.length === 0 || cloudOrder.length > localOrder.length)) {
-						state.customColumnOrder = cloudOrder;
-						localStorage.setItem('vox_custom_column_order', JSON.stringify(cloudOrder));
-					}
-				}
+                    const cloudOrder = firebaseArrayToArray(val.customColumnOrder);
+                    const localOrder = JSON.parse(localStorage.getItem('vox_custom_column_order') || '[]');
+                    if (cloudOrder.length > 0 && (localOrder.length === 0 || cloudOrder.length > localOrder.length)) {
+                        state.customColumnOrder = cloudOrder;
+                        localStorage.setItem('vox_custom_column_order', JSON.stringify(cloudOrder));
+                    }
+                }
 
                 if (restored.length > 0) {
                     if (state.currentData.length === 0) {
                         state.currentData = restored;
                         if (Array.isArray(val.activeColumns) && val.activeColumns.length > 0) state.activeColumns = val.activeColumns;
-                        
+
                         rebuildDynamicColumns();
                         if (!state.activeColumns || state.activeColumns.length === 0) state.activeColumns = getDefaultColumns();
-                        
+
                         localStorage.setItem('vox_current_data', JSON.stringify(state.currentData));
                         if (typeof renderTable === 'function') renderTable();
                         if (typeof showToast === 'function') showToast("Đã khôi phục dữ liệu từ Cloud!");
@@ -102,12 +118,11 @@ function persistChanges(immediate = false) {
     if (immediate) {
         try { localStorage.setItem('vox_current_data', JSON.stringify(state.currentData)); } catch (e) {}
         scheduleFirebaseSync(0);
-    } else {
-        scheduleLocalSave(200);
-        scheduleFirebaseSync(1000);
     }
+    else { scheduleLocalSave(200); scheduleFirebaseSync(1000); }
 }
 
+/** Fix B: lưu layout vào bản ghi lịch sử. */
 function saveHistoryToFirebase(record) {
     if (state.firebaseInitState !== 'ready' || !state.firebaseDb) return Promise.reject(new Error('Firebase not ready'));
     const data = {
@@ -118,6 +133,14 @@ function saveHistoryToFirebase(record) {
         activeColumns: record.activeColumns || []
     };
     return state.firebaseDb.ref(SHARED_HISTORY_PATH + '/' + record.id).set(data);
+}
+
+function deleteHistoryFromFirebase(id) {
+    if (state.firebaseInitState !== 'ready' || !state.firebaseDb) return Promise.reject(new Error('Firebase not ready'));
+    const updates = {};
+    updates[SHARED_HISTORY_PATH + '/' + id] = null;
+    updates[SHARED_HISTORY_DELETED_PATH + '/' + id] = Date.now();
+    return state.firebaseDb.ref().update(updates);
 }
 
 function mergeHistoryFromCloud(cloud, deleted) {
@@ -158,7 +181,13 @@ function loadHistoryFromFirebase() {
         if (toPush.length > 0) {
             const updates = {};
             toPush.forEach(h => {
-                updates[SHARED_HISTORY_PATH + '/' + h.id] = { time: h.time, count: h.count, data: sanitizeDataForFirebase(h.data || []) };
+                updates[SHARED_HISTORY_PATH + '/' + h.id] = {
+                    time: h.time,
+                    count: h.count,
+                    data: sanitizeDataForFirebase(h.data || []),
+                    customColumnOrder: h.customColumnOrder || [],
+                    activeColumns: h.activeColumns || []
+                };
             });
             state.firebaseDb.ref().update(updates).catch(err => console.error(err));
         }

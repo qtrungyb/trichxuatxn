@@ -59,9 +59,10 @@ function decodeKey(k) {
 function sanitizeDataForFirebase(data) {
     if (!Array.isArray(data)) return [];
     return data.map(row => {
-        const newRow = { hoTen: row.hoTen || '', tuoi: row.tuoi || '', gioiTinh: row.gioiTinh || '', tests: {}, testCategories: {} };
+        const newRow = { hoTen: row.hoTen || '', tuoi: row.tuoi || '', gioiTinh: row.gioiTinh || '', tests: {}, testCategories: {}, testRefRanges: {} };
         if (row.tests) Object.keys(row.tests).forEach(k => { newRow.tests[encodeKey(k)] = row.tests[k]; });
         if (row.testCategories) Object.keys(row.testCategories).forEach(k => { newRow.testCategories[encodeKey(k)] = row.testCategories[k]; });
+        if (row.testRefRanges) Object.keys(row.testRefRanges).forEach(k => { newRow.testRefRanges[encodeKey(k)] = row.testRefRanges[k]; });
         return newRow;
     });
 }
@@ -71,24 +72,20 @@ function desanitizeDataFromFirebase(data) {
     if (!arr) return [];
     if (!Array.isArray(arr)) arr = Object.keys(arr).sort((a, b) => Number(a) - Number(b)).map(k => arr[k]);
     return arr.filter(r => r !== null && r !== undefined).map(row => {
-        const newRow = { hoTen: row.hoTen || '', tuoi: row.tuoi || '', gioiTinh: row.gioiTinh || '', tests: {}, testCategories: {} };
+        const newRow = { hoTen: row.hoTen || '', tuoi: row.tuoi || '', gioiTinh: row.gioiTinh || '', tests: {}, testCategories: {}, testRefRanges: {} };
         if (row.tests && typeof row.tests === 'object') Object.keys(row.tests).forEach(k => { newRow.tests[decodeKey(k)] = row.tests[k]; });
         if (row.testCategories && typeof row.testCategories === 'object') Object.keys(row.testCategories).forEach(k => { newRow.testCategories[decodeKey(k)] = row.testCategories[k]; });
+        if (row.testRefRanges && typeof row.testRefRanges === 'object') Object.keys(row.testRefRanges).forEach(k => { newRow.testRefRanges[decodeKey(k)] = row.testRefRanges[k]; });
         return newRow;
     });
 }
 
-/**
- * Firebase lưu array thành object dạng {0:'a',1:'b'}.
- * Helper này chuẩn hoá về mảng JS thuần (giữ đúng thứ tự index).
- */
+/** Firebase lưu array dạng object {0:'a',1:'b'} — chuẩn hoá về mảng JS. */
 function firebaseArrayToArray(val) {
     if (!val) return [];
     if (Array.isArray(val)) return val;
     if (typeof val === 'object') {
-        return Object.keys(val)
-            .sort((a, b) => Number(a) - Number(b))
-            .map(k => val[k]);
+        return Object.keys(val).sort((a, b) => Number(a) - Number(b)).map(k => val[k]);
     }
     return [];
 }
@@ -106,16 +103,12 @@ function getAllColumns() {
     return [...BASE_COLUMNS, ...state.dynamicTestCols];
 }
 
-/**
- * Trả về danh sách cột đang active, đã sắp xếp theo đúng thứ tự hiển thị.
- * LƯU Ý: KHÔNG mutate state.customColumnOrder — dùng bản sao effectiveOrder.
- */
+/** KHÔNG mutate state.customColumnOrder — dùng bản sao effectiveOrder. */
 function getSortedActiveCols() {
     let allCols = getAllColumns();
     let activeCols = allCols.filter(c => state.activeColumns.includes(c.key));
 
     if (state.customColumnOrder && state.customColumnOrder.length > 0) {
-        // Bản sao — không ghi ngược vào state
         let effectiveOrder = [...state.customColumnOrder];
         activeCols.forEach(c => {
             if (!effectiveOrder.includes(c.key)) effectiveOrder.push(c.key);
@@ -136,6 +129,7 @@ function getSortedActiveCols() {
     return activeCols;
 }
 
+/** Giữ nguyên logic gốc — subset tuyển chọn, KHÔNG đổi sang "chọn tất cả". */
 function getDefaultColumns() {
     let defaults = [...BASE_COLUMNS.map(c => c.key)];
     state.dynamicTestCols.forEach(c => {
