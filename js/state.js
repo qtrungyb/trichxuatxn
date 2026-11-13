@@ -33,6 +33,7 @@ const state = {
     firebaseSaveTimer: null,
     localSaveTimer: null,
     sharedHistoryListener: null,
+	sharedHistoryDeletedListener: null,
     sortCol: null,
     sortDir: 'asc',
     tableTheme: localStorage.getItem('vox_table_theme') || 'default',

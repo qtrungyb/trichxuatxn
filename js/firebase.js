@@ -1,13 +1,28 @@
 function initFirebase() {
     try {
-        if (typeof firebase === 'undefined' || !firebase.initializeApp) { state.firebaseInitState = 'error'; return; }
+        if (typeof firebase === 'undefined' || !firebase.initializeApp) {
+            console.error('[Firebase] SDK chưa load được (CDN bị chặn?)');
+            state.firebaseInitState = 'error';
+            if (typeof showToast === 'function')
+                showToast("Không tải được Firebase SDK — chỉ lưu local!", true);
+            return;
+        }
         if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
         state.firebaseDb = firebase.database();
+
+        // Giữ dữ liệu đồng bộ kể cả khi offline → lần sau mở sẽ có cache
+        try { state.firebaseDb.ref().keepSynced(true); } catch (e) {}
+
         state.firebaseInitState = 'ready';
         loadFromFirebase();
         loadHistoryFromFirebase();
         listenSharedHistory();
-    } catch (e) { state.firebaseInitState = 'error'; }
+    } catch (e) {
+        console.error('[Firebase] Init lỗi:', e);
+        state.firebaseInitState = 'error';
+        if (typeof showToast === 'function')
+            showToast("Không kết nối được Cloud — chỉ lưu local!", true);
+    }
 }
 
 function scheduleFirebaseSync(delay = 1000) {
@@ -21,6 +36,13 @@ function syncToFirebase() {
     try {
         const deviceId = getDeviceId();
         const ref = state.firebaseDb.ref('workspaces/' + deviceId);
+
+        // Data rỗng: xoá node để không vi phạm .validate hasChildren
+        if (!state.currentData || state.currentData.length === 0) {
+            ref.remove().catch(err => console.error('[Firebase] Remove empty failed:', err));
+            return;
+        }
+
         const payload = {
             currentData: sanitizeDataForFirebase(state.currentData),
             activeColumns: state.activeColumns,
@@ -39,14 +61,9 @@ function clearWorkspaceOnCloud() {
     if (state.firebaseSaveTimer) { clearTimeout(state.firebaseSaveTimer); state.firebaseSaveTimer = null; }
     try {
         const deviceId = getDeviceId();
-        return state.firebaseDb.ref('workspaces/' + deviceId).set({
-            currentData: null,
-            activeColumns: state.activeColumns,
-            customColumnOrder: [],
-            tableTheme: state.tableTheme,
-            deviceId: deviceId,
-            updatedAt: Date.now()
-        }).catch(err => console.error('[Firebase] Clear failed:', err));
+        // XOÁ HẲN NODE: newData = null → Firebase BỎ QUA .validate
+        return state.firebaseDb.ref('workspaces/' + deviceId).remove()
+            .catch(err => console.error('[Firebase] Clear failed:', err));
     } catch (e) { console.error('[Firebase] Clear exception:', e); return Promise.resolve(); }
 }
 
@@ -168,16 +185,25 @@ function mergeHistoryFromCloud(cloud, deleted) {
 
 function loadHistoryFromFirebase() {
     if (!state.firebaseDb) return;
-    state.firebaseDb.ref('history').once('value').then(snap => {
-        const val = snap.val() || {};
-        const merged = mergeHistoryFromCloud(val.shared || {}, val.shared_deleted || {});
+
+    // ĐỌC ĐÚNG ĐƯỜNG DẪN ĐÃ GHI — tránh lỗi rules granular
+    Promise.all([
+        state.firebaseDb.ref(SHARED_HISTORY_PATH).once('value'),
+        state.firebaseDb.ref(SHARED_HISTORY_DELETED_PATH).once('value')
+    ]).then(([sharedSnap, deletedSnap]) => {
+        const shared  = sharedSnap.val()  || {};
+        const deleted = deletedSnap.val() || {};
+
+        const merged = mergeHistoryFromCloud(shared, deleted);
         const localHistory = JSON.parse(localStorage.getItem('vox_history')) || [];
         if (JSON.stringify(merged) !== JSON.stringify(localHistory)) {
             localStorage.setItem('vox_history', JSON.stringify(merged));
             if (typeof renderHistory === 'function') renderHistory();
         }
-        const cloudIds = new Set(Object.keys(val.shared || {}).map(k => Number(k)));
-        const toPush = merged.filter(h => !cloudIds.has(h.id) && !(val.shared_deleted && val.shared_deleted[h.id]));
+
+        // Đẩy các bản ghi LOCAL-ONLY (chưa có trên cloud) lên
+        const cloudIds = new Set(Object.keys(shared).map(k => Number(k)));
+        const toPush = merged.filter(h => !cloudIds.has(h.id) && !(deleted[h.id]));
         if (toPush.length > 0) {
             const updates = {};
             toPush.forEach(h => {
@@ -189,22 +215,52 @@ function loadHistoryFromFirebase() {
                     activeColumns: h.activeColumns || []
                 };
             });
-            state.firebaseDb.ref().update(updates).catch(err => console.error(err));
+            state.firebaseDb.ref().update(updates)
+                .catch(err => console.error('[Firebase] Push local-only failed:', err));
         }
-    }).catch(err => console.error(err));
+    }).catch(err => {
+        console.error('[Firebase] Đọc lịch sử thất bại:', err);
+        if (typeof showToast === 'function')
+            showToast("Không tải được lịch sử từ Cloud — kiểm tra Rules!", true);
+    });
 }
 
 function listenSharedHistory() {
     if (!state.firebaseDb) return;
-    const ref = state.firebaseDb.ref('history');
-    if (state.sharedHistoryListener) ref.off('value', state.sharedHistoryListener);
-    state.sharedHistoryListener = ref.on('value', snap => {
-        const val = snap.val() || {};
-        const merged = mergeHistoryFromCloud(val.shared || {}, val.shared_deleted || {});
+
+    // Huỷ listener cũ nếu có
+    if (state.sharedHistoryListener)
+        state.firebaseDb.ref(SHARED_HISTORY_PATH).off('value', state.sharedHistoryListener);
+    if (state.sharedHistoryDeletedListener)
+        state.firebaseDb.ref(SHARED_HISTORY_DELETED_PATH).off('value', state.sharedHistoryDeletedListener);
+
+    let cachedShared  = null;
+    let cachedDeleted = null;
+
+    const tryUpdate = () => {
+        if (cachedShared === null || cachedDeleted === null) return;
+        const merged = mergeHistoryFromCloud(cachedShared, cachedDeleted);
         const localHistory = JSON.parse(localStorage.getItem('vox_history')) || [];
         if (JSON.stringify(merged) !== JSON.stringify(localHistory)) {
             localStorage.setItem('vox_history', JSON.stringify(merged));
             if (typeof renderHistory === 'function') renderHistory();
         }
-    }, err => console.error(err));
+    };
+
+    // LẮNG NGHE ĐÚNG ĐƯỜNG DẪN ĐÃ GHI
+    state.sharedHistoryListener = state.firebaseDb.ref(SHARED_HISTORY_PATH)
+        .on('value', snap => {
+            cachedShared = snap.val() || {};
+            tryUpdate();
+        }, err => {
+            console.error('[Firebase] Listener shared-history lỗi:', err);
+            if (typeof showToast === 'function')
+                showToast("Mất kết nối Cloud cho lịch sử — kiểm tra Rules!", true);
+        });
+
+    state.sharedHistoryDeletedListener = state.firebaseDb.ref(SHARED_HISTORY_DELETED_PATH)
+        .on('value', snap => {
+            cachedDeleted = snap.val() || {};
+            tryUpdate();
+        }, err => console.error('[Firebase] Listener shared_deleted lỗi:', err));
 }

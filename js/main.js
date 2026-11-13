@@ -277,15 +277,18 @@ window.saveToHistory = () => {
     localStorage.setItem('vox_history', JSON.stringify(history));
     window.renderHistory();
 
-    if (state.firebaseInitState === 'ready') {
-        saveHistoryToFirebase(newRecord).then(() => {
-            showToast(`Đã lưu và đồng bộ Cloud!`);
-        }).catch(() => {
-            showToast("Đã lưu local — Lỗi Cloud!", true);
-        });
-    } else {
-        showToast(`Đã lưu local!`);
-    }
+	if (state.firebaseInitState === 'ready') {
+		saveHistoryToFirebase(newRecord).then(() => {
+			showToast(`Đã lưu và đồng bộ Cloud!`);
+		}).catch((err) => {
+			console.error('[Firebase] Lưu lịch sử lỗi:', err);
+			showToast("Đã lưu local — Cloud từ chối (kiểm tra Rules)!", true);
+		});
+	} else if (state.firebaseInitState === 'error') {
+		showToast("Đã lưu local — Firebase chưa kết nối được!", true);
+	} else {
+		showToast("Đã lưu local — Firebase đang khởi tạo, thử lại sau!");
+	}
 };
 
 window.renderHistory = function() {
