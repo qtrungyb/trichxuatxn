@@ -693,3 +693,27 @@ body.dark-mode.theme-grad-cosmic {
 }
 body.dark-mode .val-high { color: #f87171; }
 body.dark-mode .val-low  { color: #60a5fa; }
+/* ================= KẾT QUẢ KHÁM (text dài) ================= */
+table.data-table td.exam-result-cell {
+    white-space: normal !important;
+    word-wrap: break-word;
+    word-break: break-word;
+    line-height: 1.5;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 12.5px;
+    min-width: 220px;
+    max-width: 420px;
+    padding: 8px 12px;
+    vertical-align: top;
+    text-align: left !important;
+}
+
+/* Dot màu cho 3 category mới */
+.dot-chuyen-khoa  { background: #0891b2; }
+.dot-cdhinh-anh   { background: #7c3aed; }
+.dot-noi-soi      { background: #db2777; }
+
+/* Viền group header */
+th.group-border-chuyen-khoa  { border-top: 3px solid #0891b2; }
+th.group-border-cdhinh-anh   { border-top: 3px solid #7c3aed; }
+th.group-border-noi-soi      { border-top: 3px solid #db2777; }
