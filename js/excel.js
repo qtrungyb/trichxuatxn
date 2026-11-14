@@ -24,28 +24,42 @@ function copyTableData() {
         html += `<tr>`;
         displayCols.forEach(col => {
             let val = '', extraStyle = '';
+            let isExamResult = /^test_\[(?:CK|XQ|SA|NS)\]/.test(col.key);
+
             if (col.key === 'stt') {
                 val = idx + 1;
             } else if (col.key.startsWith('test_')) {
                 let actualKey = col.key.replace('test_', '');
                 val = row.tests[actualKey] || '';
-                let ref = row.testRefRanges && row.testRefRanges[actualKey];
-                if (ref && val) {
-					let numVal = parseFloat(String(val).replace(',', '.'));
-					if (Number.isFinite(numVal)) {
-						let isLow  = (ref.min !== null && ref.min !== undefined && numVal < ref.min);
-						let isHigh = (ref.max !== null && ref.max !== undefined && numVal > ref.max);
-						if (isLow || isHigh) {
-							let color = isLow ? '#2563eb' : '#dc2626';   // low = blue, high = red
-							extraStyle = `font-weight: bold; color: ${color};`;
-						}
-					}
-				}
+
+                // Chỉ áp dụng Feature C cho cột xét nghiệm thường (không phải kết quả khám)
+                if (!isExamResult) {
+                    let ref = row.testRefRanges && row.testRefRanges[actualKey];
+                    if (ref && val) {
+                        let numVal = parseFloat(String(val).replace(',', '.'));
+                        if (Number.isFinite(numVal)) {
+                            let isLow  = (ref.min !== null && ref.min !== undefined && numVal < ref.min);
+                            let isHigh = (ref.max !== null && ref.max !== undefined && numVal > ref.max);
+                            if (isLow || isHigh) {
+                                let color = isLow ? '#2563eb' : '#dc2626';
+                                extraStyle = `font-weight: bold; color: ${color};`;
+                            }
+                        }
+                    }
+                }
             } else {
                 val = row[col.key] || '';
             }
+
+            // Cột kết quả khám: align left + wrap text
             let align = col.key === 'hoTen' ? 'left' : 'center';
-            html += `<td style="padding: 6px 12px; border: 1px solid #cbd5e1; text-align: ${align}; ${FONT_STYLE} ${extraStyle}">${val}</td>`;
+            let wrapStyle = '';
+            if (isExamResult) {
+                align = 'left';
+                wrapStyle = 'white-space: normal; word-wrap: break-word; vertical-align: top;';
+            }
+
+            html += `<td style="padding: 6px 12px; border: 1px solid #cbd5e1; text-align: ${align}; ${FONT_STYLE} ${extraStyle} ${wrapStyle}">${val}</td>`;
         });
         html += `</tr>`;
     });
@@ -74,6 +88,9 @@ function exportExcel() {
 
     let displayCols = [{ key: 'stt', label: 'STT', category: 'Thông tin Hành chính' }, ...activeCols];
 
+    // Helper: cột kết quả khám [CK]/[XQ]/[SA]/[NS]
+    const isExamCol = (key) => /^test_\[(?:CK|XQ|SA|NS)\]/.test(key);
+
     let wsData = [];
     let rowGroups = [], rowHeaders = [];
 
@@ -97,7 +114,12 @@ function exportExcel() {
     });
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
-    ws['!cols'] = displayCols.map(() => ({ wch: 18 }));
+
+    // Cột kết quả khám rộng hơn để chứa text dài
+    ws['!cols'] = displayCols.map(col => {
+        if (isExamCol(col.key)) return { wch: 60 };
+        return { wch: 18 };
+    });
 
     let merges = [], startCol = 0, currentGroupName = rowGroups[0];
     for (let i = 0; i < rowGroups.length; i++) {
@@ -135,30 +157,35 @@ function exportExcel() {
                 cell.s.alignment.horizontal = "left";
             }
 
+            // Cột kết quả khám: align left + vertical top
+            let colKey = displayCols[C] && displayCols[C].key;
+            if (R >= 2 && colKey && isExamCol(colKey)) {
+                cell.s.alignment.horizontal = "left";
+                cell.s.alignment.vertical = "top";
+            }
+
             // Feature C: highlight bất thường trong Excel (không tô nền)
-			if (R >= 2) {
-				let colKey = displayCols[C] && displayCols[C].key;
-				if (colKey && colKey.startsWith('test_')) {
-					let actualKey = colKey.replace('test_', '');
-					let row = state.currentData[R - 2];
-					let ref = row && row.testRefRanges && row.testRefRanges[actualKey];
-					if (ref) {
-						let cellVal = cell.v;
-						if (cellVal !== '' && cellVal !== null && cellVal !== undefined) {
-							let numVal = parseFloat(String(cellVal).replace(',', '.'));
-							if (Number.isFinite(numVal)) {
-								let isLow  = (ref.min !== null && ref.min !== undefined && numVal < ref.min);
-								let isHigh = (ref.max !== null && ref.max !== undefined && numVal > ref.max);
-								if (isLow || isHigh) {
-									cell.s.font.bold = true;
-									cell.s.font.color = { rgb: isLow ? '2563EB' : 'DC2626' };
-									// KHÔNG set cell.s.fill → giữ nền trắng
-								}
-							}
-						}
-					}
-				}
-			}
+            // KHÔNG áp dụng cho cột kết quả khám
+            if (R >= 2 && colKey && colKey.startsWith('test_') && !isExamCol(colKey)) {
+                let actualKey = colKey.replace('test_', '');
+                let row = state.currentData[R - 2];
+                let ref = row && row.testRefRanges && row.testRefRanges[actualKey];
+                if (ref) {
+                    let cellVal = cell.v;
+                    if (cellVal !== '' && cellVal !== null && cellVal !== undefined) {
+                        let numVal = parseFloat(String(cellVal).replace(',', '.'));
+                        if (Number.isFinite(numVal)) {
+                            let isLow  = (ref.min !== null && ref.min !== undefined && numVal < ref.min);
+                            let isHigh = (ref.max !== null && ref.max !== undefined && numVal > ref.max);
+                            if (isLow || isHigh) {
+                                cell.s.font.bold = true;
+                                cell.s.font.color = { rgb: isLow ? '2563EB' : 'DC2626' };
+                                // KHÔNG set cell.s.fill → giữ nền trắng
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

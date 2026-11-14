@@ -199,11 +199,16 @@ function renderTable() {
                 if (col.key !== 'hoTen') cellClass = 'col-data';
             }
 
+            // ===== KẾT QUẢ KHÁM: cột [CK]/[XQ]/[SA]/[NS] =====
+            let isExamResult = /^test_\[(?:CK|XQ|SA|NS)\]/.test(col.key);
+            if (isExamResult) cellClass += ' exam-result-cell';
+
             let isGroupEnd = (i === displayCols.length - 1) || (displayCols[i+1].category !== col.category);
             let groupEndClass = isGroupEnd ? 'col-group-end' : '';
 
             let alignClass = 'text-center';
             if (col.key === 'hoTen') alignClass = 'text-left';
+            if (isExamResult) alignClass = 'text-left';
 
             let stickyStyle = '';
             let stickyClass = '';
@@ -226,6 +231,9 @@ function renderTable() {
             if (col.key !== 'stt') {
                 if (val === '' || val === null || val === undefined) {
                     displayVal = '<span class="empty-cell">-</span>';
+                } else if (isExamResult) {
+                    // Kết quả khám: hiển thị raw text, không badge/không so khoảng TC
+                    displayVal = val;
                 } else {
                     let lowerVal = String(val).toLowerCase();
                     if (lowerVal.includes('dương tính') || lowerVal === 'positive' || lowerVal === '+') {
@@ -233,25 +241,25 @@ function renderTable() {
                     } else if (lowerVal.includes('âm tính') || lowerVal === 'negative' || lowerVal === '-') {
                         displayVal = `<span class="badge-success">${val}</span>`;
                     } else if (col.key.startsWith('test_')) {
-						// ===== Feature C: so sánh khoảng tham chiếu =====
-						let actualKey = col.key.replace('test_', '');
-						let ref = row.testRefRanges && row.testRefRanges[actualKey];
-						if (ref) {
-							let numVal = parseFloat(String(val).trim().replace(',', '.'));
-							if (Number.isFinite(numVal)) {
-								let isLow  = (ref.min !== null && ref.min !== undefined && numVal < ref.min);
-								let isHigh = (ref.max !== null && ref.max !== undefined && numVal > ref.max);
-								if (isLow || isHigh) {
-									let rangeStr = (ref.min !== null && ref.max !== null)
-										? `${ref.min} - ${ref.max}`
-										: (ref.min !== null ? `≥ ${ref.min}` : `≤ ${ref.max}`);
-									let suffix = isLow ? 'thấp' : 'cao';
-									let cls    = isLow ? 'val-low' : 'val-high';
-									displayVal = `<span class="${cls}" title="Khoảng tham chiếu: ${rangeStr} (${suffix})">${val}</span>`;
-								}
-							}
-						}
-					}
+                        // ===== Feature C: so sánh khoảng tham chiếu =====
+                        let actualKey = col.key.replace('test_', '');
+                        let ref = row.testRefRanges && row.testRefRanges[actualKey];
+                        if (ref) {
+                            let numVal = parseFloat(String(val).trim().replace(',', '.'));
+                            if (Number.isFinite(numVal)) {
+                                let isLow  = (ref.min !== null && ref.min !== undefined && numVal < ref.min);
+                                let isHigh = (ref.max !== null && ref.max !== undefined && numVal > ref.max);
+                                if (isLow || isHigh) {
+                                    let rangeStr = (ref.min !== null && ref.max !== null)
+                                        ? `${ref.min} - ${ref.max}`
+                                        : (ref.min !== null ? `≥ ${ref.min}` : `≤ ${ref.max}`);
+                                    let suffix = isLow ? 'thấp' : 'cao';
+                                    let cls    = isLow ? 'val-low' : 'val-high';
+                                    displayVal = `<span class="${cls}" title="Khoảng tham chiếu: ${rangeStr} (${suffix})">${val}</span>`;
+                                }
+                            }
+                        }
+                    }
                 }
             }
 

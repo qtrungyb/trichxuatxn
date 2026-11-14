@@ -160,6 +160,7 @@ window.updateData = (rowIndex, key, newValue) => {
 window.refreshCellAbnormal = function(td, rowIndex, colKey) {
     if (!colKey.startsWith('test_')) return;
     let actualKey = colKey.replace('test_', '');
+	if (/^\[(?:CK|XQ|SA|NS)\]/.test(actualKey)) return;
     let row = state.currentData[rowIndex];
     if (!row) return;
 

@@ -5,8 +5,15 @@ const BASE_COLUMNS = [
 ];
 
 const CATEGORY_ORDER = [
-    "Thông tin Hành chính", "Xét nghiệm huyết học", "Xét nghiệm hóa sinh",
-    "Xét nghiệm Vi sinh", "Xét nghiệm nước tiểu", "Xét nghiệm khác"
+    "Thông tin Hành chính",
+    "Xét nghiệm huyết học",
+    "Xét nghiệm hóa sinh",
+    "Xét nghiệm Vi sinh",
+    "Xét nghiệm nước tiểu",
+    "Xét nghiệm khác",
+    "Kết quả chuyên khoa",
+    "Kết quả chẩn đoán hình ảnh",
+    "Kết quả nội soi"
 ];
 
 const FIREBASE_CONFIG = {
@@ -162,6 +169,9 @@ function getDotClass(catName) {
     if (c.includes("nước tiểu")) return "dot-nuoc-tieu";
     if (c.includes("vi sinh")) return "dot-vi-sinh";
     if (c.includes("đông máu") || c.includes("miễn dịch")) return "dot-dong-mau";
+    if (c.includes("chuyên khoa")) return "dot-chuyen-khoa";
+    if (c.includes("chẩn đoán hình ảnh")) return "dot-cdhinh-anh";
+    if (c.includes("nội soi")) return "dot-noi-soi";
     return "dot-khac";
 }
 
@@ -191,6 +201,7 @@ function rebuildDynamicColumns() {
         let sample = "-";
         for (let r of state.currentData) if (r.testCategories && r.testCategories[k]) { cat = r.testCategories[k]; break; }
         for (let r of state.currentData) if (r.tests && r.tests[k]) { sample = r.tests[k]; break; }
-        return { key: `test_${k}`, label: k, category: cat, sampleResult: sample };
+        let displayLabel = k.replace(/^\[(?:CK|XQ|SA|NS)\]\s*/, '').trim() || k;   // ← THÊM DÒNG NÀY
+        return { key: `test_${k}`, label: displayLabel, category: cat, sampleResult: sample };
     });
 }
