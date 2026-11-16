@@ -1,5 +1,5 @@
 
-const CACHE_VERSION = 'v1.9'; 
+const CACHE_VERSION = 'v2.0'; 
 const CACHE_NAME = 'kqxn-cache-' + CACHE_VERSION;
 
 self.addEventListener('install', (event) => {
