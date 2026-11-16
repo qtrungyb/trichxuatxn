@@ -105,7 +105,16 @@
                         <span>Thêm PDF</span>
                         <input type="file" id="pdfFileInputCompact" accept=".pdf" multiple>
                     </label>
+					<!-- Thanh tìm kiếm toàn cục -->
+					<div class="search-global-wrap">
+						<svg class="svg-icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+						<input type="text" id="globalSearchInput" placeholder="Tìm tên BN, tuổi, hoặc chỉ số..." oninput="window.handleGlobalSearch(this.value)">
+					</div>
 
+					<!-- Nút mở Cài đặt Regex -->
+					<button class="btn btn-icon-only" onclick="window.openRegexModal()" data-tooltip="Cấu hình quy tắc (Regex)">
+						<svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+					</button>
                     <button type="button" class="btn" id="statusPillBtn" onclick="toggleFileDrawer()" style="display: none;">
                         <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         <span id="progressText">Đang xử lý...</span>
@@ -132,23 +141,68 @@
                     </button>
 
                     <div class="split-btn" style="position: relative; margin-left: 8px;">
-                        <button class="primary-action" onclick="copyTableData()">
-                            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                            Copy vào Excel
-                        </button>
-                        <button onclick="toggleSplitDropdown(event)">
-                            <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                        </button>
-                        <div class="dropdown-menu" id="splitDropdown">
-                            <div class="dropdown-item" onclick="exportExcel()">
-                                <svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="17"></line><line x1="16" y1="13" x2="8" y2="17"></line></svg>
-                                Xuất file Excel (.xlsx)
-                            </div>
-                        </div>
-                    </div>
+						<!-- SỬA TẠI ĐÂY: Thêm ('visible') -->
+						<button class="primary-action" onclick="copyTableData('visible')">
+							<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+							Copy vào Excel
+						</button>
+						<button onclick="toggleSplitDropdown(event)">
+							<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+						</button>
+						<!-- CẬP NHẬT MENU DROPDOWN -->
+						<div class="dropdown-menu" id="splitDropdown" style="min-width: 280px; padding: 8px;">
+						<!-- Nhóm 1: Tùy chọn Copy -->
+						<div class="dropdown-section-title">Tùy chọn Copy</div>
+						
+						<div class="dropdown-item" onclick="copyTableData('visible')">
+							<div class="dropdown-icon-wrap" style="color: #2563eb;"> <!-- Màu xanh dương -->
+								<svg class="svg-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+							</div>
+							<div class="dropdown-item-text">
+								<div class="dropdown-item-main">Copy cột đang hiển thị</div>
+								<div class="dropdown-item-sub">Chỉ các cột đang được tick chọn</div>
+							</div>
+						</div>
+
+						<div class="dropdown-item" onclick="copyTableData('all')">
+							<div class="dropdown-icon-wrap" style="color: #475569;"> <!-- Màu xám -->
+								<svg class="svg-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+							</div>
+							<div class="dropdown-item-text">
+								<div class="dropdown-item-main">Copy TẤT CẢ dữ liệu</div>
+								<div class="dropdown-item-sub">Bao gồm cả các cột đang bị ẩn</div>
+							</div>
+						</div>
+
+						<div class="dropdown-item" onclick="copyTableData('abnormal')">
+							<div class="dropdown-icon-wrap" style="color: #dc2626;"> <!-- Màu đỏ -->
+								<svg class="svg-icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+							</div>
+							<div class="dropdown-item-text">
+								<div class="dropdown-item-main" style="color: #dc2626;">Chỉ copy chỉ số BẤT THƯỜNG</div>
+								<div class="dropdown-item-sub">Lọc bỏ các kết quả bình thường</div>
+							</div>
+						</div>
+
+						<!-- Đường kẻ phân cách -->
+						<div class="dropdown-divider"></div>
+
+						<!-- Nhóm 2: Lưu trữ -->
+						<div class="dropdown-section-title">Lưu trữ dữ liệu</div>
+						
+						<div class="dropdown-item" onclick="exportExcel()">
+							<div class="dropdown-icon-wrap" style="color: #059669;"> <!-- Màu xanh lá -->
+								<svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="17"></line><line x1="16" y1="13" x2="8" y2="17"></line></svg>
+							</div>
+							<div class="dropdown-item-text">
+								<div class="dropdown-item-main">Xuất file Excel (.xlsx)</div>
+								<div class="dropdown-item-sub">Có Header, màu sắc, Freeze Panes</div>
+							</div>
+						</div>
+					</div>
                 </div>
             </div>
-
+		</div>
             <div class="drawer" id="progressContainer" style="top: 56px; right: auto; left: 24px; width: 320px; transform: translateY(-150%); height: auto; max-height: 300px; border-radius: 8px; border: 1px solid var(--border); box-shadow: var(--shadow-md); z-index: 50;">
                 <div class="drawer-header" style="padding: 12px 16px;">
                     <span style="font-size: 13px; font-weight: 600;" id="progressPercent">0%</span>
@@ -199,6 +253,11 @@
             <svg class="svg-icon search-icon-pos" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             <input type="text" class="search-input" id="modalSearch" placeholder="Tìm chỉ số..." oninput="renderColumnDrawer()">
         </div>
+		<div class="filter-pills-wrap">
+			<button class="filter-pill active" id="filter-all" onclick="setColumnFilterMode('all')">Tất cả</button>
+			<button class="filter-pill" id="filter-selected" onclick="setColumnFilterMode('selected')">Đang chọn</button>
+			<button class="filter-pill" id="filter-unselected" onclick="setColumnFilterMode('unselected')">Chưa chọn</button>
+		</div>
         <div class="drawer-body" style="padding: 12px 20px;">
             <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;" id="modalPresetRow"></div>
             <div class="settings-list" id="columnDrawerList"></div>
@@ -271,12 +330,73 @@
 
     <div id="toast"></div>
     <div id="hiddenCopyDiv" style="position: absolute; left: -9999px; top: 0;"></div>
+	<div class="modal-overlay" id="regexModal">
+		<div class="modal-box" style="max-width: 600px;">
+			<div class="modal-header">
+				<h3 style="font-size: 15px; font-weight: 600;">Cấu hình Trích xuất (Admin)</h3>
+				<button class="btn-icon" onclick="document.getElementById('regexModal').classList.remove('active')"><svg class="svg-icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+			</div>
+			<div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 20px;">
+				
+				<!-- Phần 1: Nhóm xét nghiệm -->
+				<div>
+					<label style="font-size: 14px; font-weight: 600; margin-bottom: 6px; display: block; color: var(--text-main);">
+						1. Các nhóm xét nghiệm cần nhận diện:
+					</label>
+					<div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
+						Nhập các từ khóa cách nhau bởi dấu phẩy. Hệ thống sẽ tự động gom nhóm màu sắc trên bảng.
+					</div>
+					<input type="text" id="cfgCategories" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px;" placeholder="huyết học, hóa sinh, nước tiểu, vi sinh, đông máu, miễn dịch">
+				</div>
 
+				<hr style="border: none; border-top: 1px solid var(--border);">
+
+				<!-- Phần 2: Định dạng kết quả -->
+				<div>
+					<label style="font-size: 14px; font-weight: 600; margin-bottom: 6px; display: block; color: var(--text-main);">
+						2. Các định dạng KẾT QUẢ được phép nhận diện:
+					</label>
+					<div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+						Tích chọn các dạng kết quả mà bệnh viện của bạn đang sử dụng.
+					</div>
+					
+					<div style="display: flex; flex-direction: column; gap: 10px; background: var(--bg-subtle); padding: 12px; border-radius: 8px;">
+						<label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px;">
+							<input type="checkbox" id="cfgFormatNumber" style="width: 16px; height: 16px; accent-color: var(--primary);">
+							<span>Kết quả dạng <b>Số</b> (VD: 5.5, 12.3, 100)</span>
+						</label>
+						
+						<label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px;">
+							<input type="checkbox" id="cfgFormatText" style="width: 16px; height: 16px; accent-color: var(--primary);">
+							<span>Kết quả dạng <b>Chữ</b> (VD: Âm tính, Dương tính, Bình thường, neg, norm)</span>
+						</label>
+
+						<label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px;">
+							<input type="checkbox" id="cfgFormatSymbol" style="width: 16px; height: 16px; accent-color: var(--primary);">
+							<span>Kết quả dạng <b>Ký hiệu</b> (VD: +, -, +/-, (+), (-))</span>
+						</label>
+					</div>
+				</div>
+
+			</div>
+			<div class="modal-footer">
+				<button class="btn" onclick="window.resetRegexConfig()">Khôi phục mặc định</button>
+				<button class="btn btn-primary" onclick="window.saveRegexConfig()">Lưu cấu hình</button>
+			</div>
+		</div>
+	</div>
     <script src="js/state.js"></script>
     <script src="js/firebase.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/pdf.js"></script>
     <script src="js/excel.js"></script>
     <script src="js/main.js"></script>
+	<!-- Menu Chuột Phải (Context Menu) -->
+	<div id="customContextMenu" class="context-menu" style="display: none;">
+		<div class="context-menu-item" onclick="window.deletePatient(window.contextMenuTargetIndex)">
+			<svg class="svg-icon" viewBox="0 0 24 24" style="color: var(--danger);"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+			Xóa bệnh nhân này
+		</div>
+	</div>
 </body>
 </html>
