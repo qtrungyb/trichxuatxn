@@ -271,18 +271,42 @@ body {
 .dropdown-item:hover { background: var(--bg-subtle); }
 
 /* ================= TABLE ================= */
+/* ================= TABLE ================= */
 .table-container {
     flex: 1; background: var(--bg-card); border: 1px solid var(--border);
     border-radius: 12px; 
     overflow: auto; 
     box-shadow: var(--shadow-sm);
-    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
     position: relative;
     z-index: 10;
     min-height: 0; 
+    
+    /* Tùy chỉnh cho Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-muted) var(--bg-subtle);
+    scroll-behavior: smooth; /* Hiệu ứng cuộn mượt mà */
 }
-.table-container::-webkit-scrollbar { width: 8px; height: 8px; }
-.table-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* Tùy chỉnh thanh cuộn cho Chrome, Edge, Safari */
+.table-container::-webkit-scrollbar {
+    width: 10px;  /* Rộng hơn chút cho dễ nắm */
+    height: 10px; 
+}
+.table-container::-webkit-scrollbar-track {
+    background: var(--bg-subtle); 
+    border-radius: 8px;
+}
+.table-container::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 8px;
+    border: 2px solid var(--bg-card); /* Tạo viền trắng để thanh cuộn trông thanh thoát */
+}
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: var(--primary); /* Đổi sang màu xanh khi cầm chuột kéo */
+}
+.table-container::-webkit-scrollbar-corner {
+    background: var(--bg-subtle);
+}
 
 table.data-table {
     width: 100%; border-collapse: separate; border-spacing: 0;
@@ -310,6 +334,7 @@ table.data-table thead tr.tier-group th {
 .dot-dong-mau { background: #ec4899; }
 .dot-khac { background: #6b7280; }
 
+/* Code MỚI */
 table.data-table thead tr.tier-indicator th {
     background: var(--table-header-bg); 
     padding: 12px 16px;
@@ -319,9 +344,10 @@ table.data-table thead tr.tier-indicator th {
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border-bottom: 2px solid var(--border);
-    position: sticky; top: 38px; z-index: 19;
-    text-align: center;
-    box-shadow: 0 -1px 0 var(--table-header-bg);
+    position: sticky; top: 38px; 
+    
+    z-index: 20; /* Hạ xuống 20 để không đè lên cột sticky */
+    box-shadow: 0 4px 6px -4px rgba(0,0,0,0.15); 
 }
 
 table.data-table td {
@@ -353,7 +379,7 @@ th.group-border-khac       { border-top: 3px solid #6b7280; }
 .col-sticky {
     position: sticky !important;
     background-color: var(--bg-card) !important;
-    z-index: 21 !important;
+    z-index: 10 !important; /* Cột dữ liệu cố định nằm trên dữ liệu thường */
     font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -363,15 +389,18 @@ table.data-table tbody tr:nth-child(even) td.col-sticky {
     background-color: var(--table-stripe) !important; 
 }
 
-table.data-table thead tr.tier-group th.col-sticky { z-index: 22 !important; background-color: var(--table-header-bg) !important; }
-table.data-table thead tr.tier-indicator th.col-sticky { z-index: 25 !important; background-color: var(--table-header-bg) !important; }
+/* Header của cột sticky phải nằm TRÊN cột dữ liệu sticky */
+table.data-table thead tr.tier-group th.col-sticky { z-index: 25 !important; background-color: var(--table-header-bg) !important; }
+table.data-table thead tr.tier-indicator th.col-sticky { z-index: 30 !important; background-color: var(--table-header-bg) !important; }
 
+/* Bóng mờ cho cột cuối cùng (Giới tính) */
 .col-sticky-last {
-    box-shadow: 6px 0 16px -4px rgba(0,0,0,0.1);
+    box-shadow: 6px 0 12px -6px rgba(0,0,0,0.15);
     border-right: 1px solid var(--border) !important;
 }
-body.dark-mode .col-sticky-last { box-shadow: 6px 0 16px -4px rgba(0,0,0,0.5); }
-
+body.dark-mode .col-sticky-last { 
+    box-shadow: 6px 0 12px -6px rgba(0,0,0,0.6); 
+}
 /* ================= CROSSHAIR HIGHLIGHT (ĐỒNG NHẤT) ================= */
 table.data-table tbody tr.row-hover td,
 table.data-table tbody tr.row-hover td.col-sticky {
@@ -414,7 +443,9 @@ table.data-table td.col-data { font-family: 'JetBrains Mono', monospace; font-si
 table.data-table td[contenteditable="true"]:hover { box-shadow: inset 0 0 0 1px var(--border); }
 table.data-table td[contenteditable="true"]:focus {
     outline: none; box-shadow: inset 0 0 0 2px var(--primary);
-    background-color: var(--bg-card) !important; z-index: 30; position: relative;
+    background-color: var(--bg-card) !important; 
+    position: relative;
+    z-index: 5; /* Hạ xuống 5 để khi sửa ô không bị đè lên cột ghim */
 }
 
 .badge-danger { background: #fef2f2; color: #dc2626; padding: 2px 8px; border-radius: 6px; font-weight: 600; font-size: 12px; border: 1px solid #fecaca; display: inline-block; }
@@ -717,3 +748,293 @@ table.data-table td.exam-result-cell {
 th.group-border-chuyen-khoa  { border-top: 3px solid #0891b2; }
 th.group-border-cdhinh-anh   { border-top: 3px solid #7c3aed; }
 th.group-border-noi-soi      { border-top: 3px solid #db2777; }
+/* ================= CẢI TIẾN DRAWER CHỌN CHỈ SỐ ================= */
+.filter-pills-wrap {
+    display: flex; gap: 8px; padding: 0 20px 12px 20px;
+    border-bottom: 1px solid var(--border); background: var(--bg-card);
+}
+.filter-pill {
+    padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    background: var(--bg-subtle); border: 1px solid var(--border);
+    color: var(--text-secondary); cursor: pointer; transition: all 0.2s;
+}
+.filter-pill:hover { background: var(--border); color: var(--text-main); }
+.filter-pill.active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+
+/* Checkbox ở cấp độ Nhóm */
+.setting-cat-title { padding: 12px 8px 4px 8px; cursor: pointer; }
+.setting-cat-title label { display: flex; align-items: center; gap: 8px; cursor: pointer; width: 100%; }
+.setting-cat-title input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--primary); cursor: pointer; }
+
+/* Nút kéo thả trong Drawer */
+.drawer-drag-handle {
+    cursor: grab; color: var(--text-muted); opacity: 0.5;
+    display: flex; align-items: center; justify-content: center;
+    margin-right: 4px;
+}
+.drawer-drag-handle:active { cursor: grabbing; }
+.setting-item:hover .drawer-drag-handle { opacity: 1; color: var(--primary); }
+
+/* Cải tiến Sample Value (Badge) */
+.setting-sample {
+    font-size: 11px; background: var(--bg-subtle); border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 12px; color: var(--text-secondary);
+    max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-align: right; font-family: 'Inter', sans-serif;
+}
+/* ================= CẢI TIẾN DROPDOWN COPY ================= */
+.dropdown-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 8px 12px 4px 12px;
+    letter-spacing: 0.05em;
+    margin-top: 4px;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 6px 0;
+}
+
+/* Ghi đè lại style cho item để chứa Icon + 2 dòng text */
+#splitDropdown .dropdown-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 8px 12px;
+    gap: 12px;
+    border-radius: 8px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    background: transparent;
+}
+
+/* Hiệu ứng Hover mượt mà: Đổi màu nền + Trượt nhẹ sang phải */
+#splitDropdown .dropdown-item:hover {
+    background: var(--bg-subtle);
+    transform: translateX(4px); 
+}
+
+.dropdown-icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+}
+
+.dropdown-item-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.dropdown-item-main {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-main);
+    line-height: 1.3;
+}
+
+.dropdown-item-sub {
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+/* ================= GLOBAL SEARCH ================= */
+.search-global-wrap {
+    position: relative; display: flex; align-items: center;
+}
+.search-global-wrap .search-icon {
+    position: absolute; left: 10px; color: var(--text-muted); width: 14px; height: 14px;
+}
+.search-global-wrap input {
+    padding: 8px 12px 8px 32px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg-card); font-size: 13px; width: 250px; transition: all 0.2s;
+}
+.search-global-wrap input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); width: 300px; }
+
+/* ================= EMPTY STATE & SKELETON ================= */
+.empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 60px 20px; text-align: center; color: var(--text-muted); animation: fadeIn 0.3s;
+}
+.empty-state img { width: 120px; opacity: 0.5; margin-bottom: 16px; }
+.empty-state h3 { font-size: 16px; color: var(--text-main); margin-bottom: 8px; font-weight: 600; }
+.empty-state p { font-size: 13px; max-width: 300px; }
+
+@keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+}
+.skeleton-row td {
+    height: 40px; background: #f1f5f9; border-bottom: 1px solid var(--border-light);
+    position: relative; overflow: hidden;
+}
+body.dark-mode .skeleton-row td { background: #1e293b; }
+.skeleton-row td::after {
+    content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    background-size: 1000px 100%; animation: shimmer 1.5s infinite linear;
+}
+
+/* ================= ROW ACTIONS ================= */
+.btn-delete-row {
+    color: var(--text-muted); background: transparent; border: none; cursor: pointer;
+    padding: 4px; border-radius: 4px; transition: all 0.2s;
+}
+.btn-delete-row:hover { color: var(--danger); background: var(--danger-bg); }
+/* ================= CÁC TÍNH NĂNG CẢI TIẾN MỚI ================= */
+
+/* 1. GLOBAL SEARCH (Thanh tìm kiếm toàn cục) */
+.search-global-wrap {
+    position: relative; display: flex; align-items: center;
+}
+.search-global-wrap .search-icon {
+    position: absolute; left: 10px; color: var(--text-muted); width: 14px; height: 14px;
+}
+.search-global-wrap input {
+    padding: 8px 12px 8px 32px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg-card); font-size: 13px; width: 250px; transition: all 0.2s;
+}
+.search-global-wrap input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); width: 300px; }
+
+/* 2. EMPTY STATE & SKELETON LOADING */
+.empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 60px 20px; text-align: center; color: var(--text-muted); animation: fadeIn 0.3s;
+}
+.empty-state img { width: 120px; opacity: 0.5; margin-bottom: 16px; }
+.empty-state h3 { font-size: 16px; color: var(--text-main); margin-bottom: 8px; font-weight: 600; }
+.empty-state p { font-size: 13px; max-width: 300px; }
+
+@keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+}
+.skeleton-row td {
+    height: 40px; background: #f1f5f9; border-bottom: 1px solid var(--border-light);
+    position: relative; overflow: hidden;
+}
+body.dark-mode .skeleton-row td { background: #1e293b; }
+.skeleton-row td::after {
+    content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    background-size: 1000px 100%; animation: shimmer 1.5s infinite linear;
+}
+
+/* 3. ROW ACTIONS (Nút xóa bệnh nhân trên bảng) */
+.btn-delete-row {
+    color: var(--text-muted); background: transparent; border: none; cursor: pointer;
+    padding: 4px; border-radius: 4px; transition: all 0.2s;
+}
+.btn-delete-row:hover { color: var(--danger); background: var(--danger-bg); }
+
+/* 4. CẢI TIẾN DRAWER (Bộ lọc, Checkbox nhóm, Kéo thả, Sample) */
+.filter-pills-wrap {
+    display: flex; gap: 8px; padding: 0 20px 12px 20px;
+    border-bottom: 1px solid var(--border); background: var(--bg-card);
+}
+.filter-pill {
+    padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    background: var(--bg-subtle); border: 1px solid var(--border);
+    color: var(--text-secondary); cursor: pointer; transition: all 0.2s;
+}
+.filter-pill:hover { background: var(--border); color: var(--text-main); }
+.filter-pill.active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+
+.setting-cat-title { padding: 12px 8px 4px 8px; cursor: pointer; }
+.setting-cat-title label { display: flex; align-items: center; gap: 8px; cursor: pointer; width: 100%; }
+.setting-cat-title input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--primary); cursor: pointer; }
+
+.drawer-drag-handle {
+    cursor: grab; color: var(--text-muted); opacity: 0.5;
+    display: flex; align-items: center; justify-content: center; margin-right: 4px;
+}
+.drawer-drag-handle:active { cursor: grabbing; }
+.setting-item:hover .drawer-drag-handle { opacity: 1; color: var(--primary); }
+
+.setting-sample {
+    font-size: 11px; background: var(--bg-subtle); border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 12px; color: var(--text-secondary);
+    max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-align: right; font-family: 'Inter', sans-serif;
+}
+
+/* 5. CẢI TIẾN DROPDOWN COPY (Phân cấp, icon, hover) */
+.dropdown-section-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    color: var(--text-muted); padding: 8px 12px 4px 12px; letter-spacing: 0.05em;
+}
+.dropdown-divider { height: 1px; background: var(--border); margin: 6px 0; }
+
+#splitDropdown .dropdown-item {
+    display: flex; align-items: flex-start; padding: 8px 12px; gap: 12px;
+    border-radius: 8px; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); background: transparent;
+}
+#splitDropdown .dropdown-item:hover { background: var(--bg-subtle); transform: translateX(4px); }
+.dropdown-icon-wrap { display: flex; align-items: center; justify-content: center; margin-top: 2px; flex-shrink: 0; width: 18px; height: 18px; }
+.dropdown-item-text { display: flex; flex-direction: column; gap: 2px; }
+.dropdown-item-main { font-size: 13.5px; font-weight: 600; color: var(--text-main); line-height: 1.3; }
+.dropdown-item-sub { font-size: 11.5px; color: var(--text-secondary); line-height: 1.4; }
+
+/* 6. MÀU SẮC CHO KẾT QUẢ BẤT THƯỜNG (Cao/Thấp) */
+.val-high { font-weight: 700; color: #dc2626; }
+.val-low { font-weight: 700; color: #2563eb; }
+body.dark-mode .val-high { color: #f87171; }
+body.dark-mode .val-low  { color: #60a5fa; }
+
+/* 7. CỘT KẾT QUẢ KHÁM (Siêu âm, Nội soi, X-quang - Text dài) */
+table.data-table td.exam-result-cell {
+    white-space: normal !important; word-wrap: break-word; word-break: break-word;
+    line-height: 1.5; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 12.5px; min-width: 220px; max-width: 420px; padding: 8px 12px;
+    vertical-align: top; text-align: left !important;
+}
+
+/* 8. MÀU SẮC NHÓM XÉT NGHIỆM MỚI */
+.dot-chuyen-khoa  { background: #0891b2; }
+.dot-cdhinh-anh   { background: #7c3aed; }
+.dot-noi-soi      { background: #db2777; }
+
+th.group-border-chuyen-khoa  { border-top: 3px solid #0891b2; }
+th.group-border-cdhinh-anh   { border-top: 3px solid #7c3aed; }
+th.group-border-noi-soi      { border-top: 3px solid #db2777; }
+/* ================= CUSTOM CONTEXT MENU ================= */
+.context-menu {
+    position: absolute;
+    z-index: 9999;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow-md);
+    padding: 4px;
+    min-width: 180px;
+}
+.context-menu-item {
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--text-main);
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+}
+.context-menu-item:hover {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+/* ================= CHẾ ĐỘ THOÁNG (RELAXED MODE) ================= */
+body.relaxed-mode table.data-table td {
+    padding: 20px 16px; /* Tăng khoảng cách trên dưới */
+    font-size: 14px;
+}
+body.relaxed-mode table.data-table thead tr.tier-indicator th {
+    padding: 18px 16px;
+}
