@@ -33,6 +33,7 @@ const state = {
     dynamicTestCols: [],
     activeColumns: JSON.parse(localStorage.getItem('vox_all_active_columns')) || [],
     currentData: [],
+	searchKeyword: '',
     pendingDeleteHistoryId: null,
     previewHistoryId: null,
     firebaseDb: null,
@@ -46,7 +47,34 @@ const state = {
     tableTheme: localStorage.getItem('vox_table_theme') || 'default',
     customColumnOrder: JSON.parse(localStorage.getItem('vox_custom_column_order')) || []
 };
+// Cấu hình Regex động (Có thể lưu vào localStorage)
+const DEFAULT_REGEX_CONFIG = {
+    testLine: "((?:\\+\\/-|\\+|\\-)(?:\\s*(?:neg|norm|[\\d.,]+[A-Za-z%\\/\\^0-9]*))?|[\\d.,]+[A-Za-z%\\/\\^0-9]*|Âm\\s*tính|Dương\\s*tính|neg|norm(?:\\s*[\\d.,]+[A-Za-z%\\/\\^0-9]*)?|Bình\\s*thường|Không\\s*phát\\s*hiện|\\(\\+\\)|\\(-\\))",
+    category: "^(Xét nghiệm\\s+(?:huyết học|Vi sinh|hóa sinh|nước tiểu|đông máu|miễn dịch).*)"
+};
 
+// Khởi tạo từ LocalStorage
+// Cấu hình mặc định (Tự động sinh Regex từ các lựa chọn)
+function getDefaultRegexConfig() {
+    let cats = ["huyết học", "hóa sinh", "nước tiểu", "vi sinh", "đông máu", "miễn dịch"];
+    let catRegex = `^(Xét nghiệm\\s+(?:${cats.join('|')}).*)`;
+    let testLine = `((?:\\+\\/-|\\+|\\-)(?:\\s*(?:neg|norm|[\\d.,]+[A-Za-z%\\/\\^0-9]*))?|[\\d.,]+[A-Za-z%\\/\\^0-9]*|Âm\\s*tính|Dương\\s*tính|neg|norm(?:\\s*[\\d.,]+[A-Za-z%\\/\\^0-9]*)?|Bình\\s*thường|Không\\s*phát\\s*hiện|\\(\\+\\)|\\(\\-\\))`;
+    return { 
+        testLine: testLine, 
+        category: catRegex, 
+        rawCategories: cats.join(', '), 
+        isNumber: true, isText: true, isSymbol: true 
+    };
+}
+
+// Khởi tạo từ LocalStorage (Nếu có cấu hình cũ thì tự map lại)
+let savedConfig = JSON.parse(localStorage.getItem('vox_regex_config'));
+if (savedConfig && !savedConfig.rawCategories) {
+    // Nếu là cấu hình cũ (chỉ có Regex, không có Checkbox) -> Reset về mặc định
+    localStorage.removeItem('vox_regex_config');
+    savedConfig = null;
+}
+state.regexConfig = savedConfig || getDefaultRegexConfig();
 const ICON_STAR = `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
 const ICON_CHECK_ALL = `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>`;
 const ICON_TRASH = `<svg class="svg-icon svg-icon-sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
@@ -196,12 +224,32 @@ function getAllCategories() {
 function rebuildDynamicColumns() {
     let testKeys = new Set();
     state.currentData.forEach(row => { if (row.tests) Object.keys(row.tests).forEach(k => testKeys.add(k)); });
+    
     state.dynamicTestCols = Array.from(testKeys).map(k => {
         let cat = "Xét nghiệm khác";
         let sample = "-";
-        for (let r of state.currentData) if (r.testCategories && r.testCategories[k]) { cat = r.testCategories[k]; break; }
-        for (let r of state.currentData) if (r.tests && r.tests[k]) { sample = r.tests[k]; break; }
-        let displayLabel = k.replace(/^\[(?:CK|XQ|SA|NS)\]\s*/, '').trim() || k;   // ← THÊM DÒNG NÀY
-        return { key: `test_${k}`, label: displayLabel, category: cat, sampleResult: sample };
+        let refLabel = "";
+        
+        for (let r of state.currentData) {
+            if (r.testCategories && r.testCategories[k]) { cat = r.testCategories[k]; }
+            if (r.tests && r.tests[k] && sample === "-") { sample = r.tests[k]; }
+            
+            // Lấy khoảng tham chiếu đầu tiên tìm thấy
+            if (r.testRefRanges && r.testRefRanges[k] && refLabel === "") {
+                let ref = r.testRefRanges[k];
+                if (ref.min !== null && ref.max !== null) refLabel = `(${ref.min} - ${ref.max})`;
+                else if (ref.min !== null) refLabel = `(≥ ${ref.min})`;
+                else if (ref.max !== null) refLabel = `(≤ ${ref.max})`;
+            }
+        }
+
+        let displayLabel = k.replace(/^\[(?:CK|XQ|SA|NS)\]\s*/, '').trim() || k;
+        
+        // Không thêm khoảng tham chiếu cho các kết quả khám chuyên khoa
+        if (k.startsWith('[CK]') || k.startsWith('[XQ]') || k.startsWith('[SA]') || k.startsWith('[NS]')) {
+            refLabel = "";
+        }
+
+        return { key: `test_${k}`, label: displayLabel, category: cat, sampleResult: sample, refLabel: refLabel };
     });
 }

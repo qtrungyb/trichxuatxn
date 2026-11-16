@@ -102,7 +102,6 @@ async function extractDataFromSinglePDF(file) {
 
             if (!content) return;
 
-            // Siêu âm & Nội soi: chỉ lấy đoạn KẾT LUẬN
             if (section === 'SA' || section === 'NS') {
                 let klIdx = content.search(/K[ẾE]T\s*LU[ẬA]N/i);
                 if (klIdx === -1) return;
@@ -126,7 +125,7 @@ async function extractDataFromSinglePDF(file) {
         };
 
         for (let line of fullTextLines) {
-            // ===== 1) YÊU CẦU KIỂM TRA (Siêu âm / Nội soi / X-quang) =====
+            // ===== 1) YÊU CẦU KIỂM TRA =====
             let reqMatch = line.match(/Y[êe]u\s*c[ầa]u\s*ki[ểe]m\s*tra:\s*(.+)/i);
             if (reqMatch) {
                 flushResult();
@@ -176,17 +175,11 @@ async function extractDataFromSinglePDF(file) {
                 continue;
             }
 
-            // ===== 4) MARKER BẮT ĐẦU KẾT QUẢ (fallback) =====
+            // ===== 4) MARKER BẮT ĐẦU KẾT QUẢ =====
             if (!inResultSection) {
-                if (line.includes('KẾT QUẢ KHÁM CHUYÊN KHOA')) {
-                    inResultSection = 'CK'; continue;
-                }
-                if (line.includes('KẾT QUẢ CHIẾU/CHỤP')) {
-                    inResultSection = 'XQ'; continue;
-                }
-                if (line.includes('KẾT QUẢ SIÊU ÂM')) {
-                    inResultSection = 'SA'; continue;
-                }
+                if (line.includes('KẾT QUẢ KHÁM CHUYÊN KHOA')) { inResultSection = 'CK'; continue; }
+                if (line.includes('KẾT QUẢ CHIẾU/CHỤP')) { inResultSection = 'XQ'; continue; }
+                if (line.includes('KẾT QUẢ SIÊU ÂM')) { inResultSection = 'SA'; continue; }
             }
 
             // ===== 5) BUFFER HOẶC KẾT THÚC =====
@@ -197,17 +190,10 @@ async function extractDataFromSinglePDF(file) {
 
                 let isEnd = false;
                 if (/Ng[àa]y\s+\d|B[ÁA]C\s*S[ĨI]|H[ọo]\s*v[àa]\s*t[êe]n\s*:|L[ờo]i\s*d[ặa]n|Signature\s*valid/i.test(line)) {
-                    if (isSAorNS) {
-                        if (hasConclusion) isEnd = true;
-                    } else {
-                        isEnd = true;
-                    }
+                    if (isSAorNS) { if (hasConclusion) isEnd = true; } else { isEnd = true; }
                 }
 
-                if (isEnd) {
-                    flushResult();
-                    continue;
-                }
+                if (isEnd) { flushResult(); continue; }
 
                 if (line.includes('KẾT QUẢ SIÊU ÂM') || line.includes('KẾT QUẢ CHIẾU/CHỤP') ||
                     line.includes('KẾT QUẢ KHÁM CHUYÊN KHOA') || /^M[ôo]\s*t[ảa]$/i.test(line)) {
@@ -219,11 +205,11 @@ async function extractDataFromSinglePDF(file) {
             }
 
             // ===== 6) PARSE XÉT NGHIỆM =====
-            // 🔥 FIX: `continue` thay vì `return` — tránh thoát cả hàm khi gặp dòng bảng kê
             if (/Thu\s*ph[íi]|BHYT|Miễn\s*ph[íi]|(?:^|\s)Lần(?:\s|$)/i.test(line)) continue;
             if (/(\d{1,3}(?:[.,]\d{3})+)\s*(?:đ|₫)?/i.test(line) && /(?:STT|Nội dung|Đối tượng|Đơn giá|Thành tiền)/i.test(line)) continue;
 
-            let catMatch = line.match(/^(Xét nghiệm\s+(?:huyết học|Vi sinh|hóa sinh|nước tiểu|đông máu|miễn dịch).*)/i);
+            // Áp dụng Regex động
+            let catMatch = line.match(new RegExp(state.regexConfig.category, 'i'));
             if (catMatch) { currentCategory = catMatch[1].replace(/\(.*?\)/g, '').trim(); continue; }
             if (line.match(/^(Huyết học|Hóa sinh|Nước tiểu|Vi sinh)/i)) { currentCategory = "Xét nghiệm " + line.replace(/\(.*?\)/g, '').trim(); continue; }
 
@@ -242,7 +228,7 @@ async function extractDataFromSinglePDF(file) {
             if (line.includes('KHOA XÉT NGHIỆM') || line.includes('Người thực hiện')) continue;
 
             let cleanLine = line.replace(/^\s+|\s+$/g, '');
-            let resultPattern = /((?:\+\/-|\+|\-)(?:\s*(?:neg|norm|[\d.,]+[A-Za-z%\/\^0-9]*))?|[\d.,]+[A-Za-z%\/\^0-9]*|Âm\s*tính|Dương\s*tính|neg|norm(?:\s*[\d.,]+[A-Za-z%\/\^0-9]*)?|Bình\s*thường|Không\s*phát\s*hiện|\(\+\)|\(-\))/i;
+            let resultPattern = new RegExp(state.regexConfig.testLine, 'i');
             let match = cleanLine.match(new RegExp(`^(\\d+)\\s+(.*?)\\s+${resultPattern.source}\\s+(.*)$`, 'i'));
 
             if (match) {
@@ -267,26 +253,10 @@ async function extractDataFromSinglePDF(file) {
         flushResult();
 
         // ====== CHUYỂN EXAM RESULTS THÀNH PSEUDO-TEST ======
-        examResults.chuyenKhoa.forEach(r => {
-            let key = `[CK] ${r.ten}`;
-            data.tests[key] = r.ketQua;
-            data.testCategories[key] = "Kết quả chuyên khoa";
-        });
-        examResults.xQuang.forEach(r => {
-            let key = `[XQ] ${r.ten}`;
-            data.tests[key] = r.ketQua;
-            data.testCategories[key] = "Kết quả chẩn đoán hình ảnh";
-        });
-        examResults.sieuAm.forEach(r => {
-            let key = `[SA] ${r.ten}`;
-            data.tests[key] = r.ketQua;
-            data.testCategories[key] = "Kết quả chẩn đoán hình ảnh";
-        });
-        examResults.noiSoi.forEach(r => {
-            let key = `[NS] ${r.ten}`;
-            data.tests[key] = r.ketQua;
-            data.testCategories[key] = "Kết quả nội soi";
-        });
+        examResults.chuyenKhoa.forEach(r => { let key = `[CK] ${r.ten}`; data.tests[key] = r.ketQua; data.testCategories[key] = "Kết quả chuyên khoa"; });
+        examResults.xQuang.forEach(r => { let key = `[XQ] ${r.ten}`; data.tests[key] = r.ketQua; data.testCategories[key] = "Kết quả chẩn đoán hình ảnh"; });
+        examResults.sieuAm.forEach(r => { let key = `[SA] ${r.ten}`; data.tests[key] = r.ketQua; data.testCategories[key] = "Kết quả chẩn đoán hình ảnh"; });
+        examResults.noiSoi.forEach(r => { let key = `[NS] ${r.ten}`; data.tests[key] = r.ketQua; data.testCategories[key] = "Kết quả nội soi"; });
 
         return data;
     } catch (error) {
@@ -309,6 +279,20 @@ async function processBatchPDF(files, append = false) {
     progressPercent.innerText = '0%';
     fileListEl.innerHTML = '';
 
+    // HIỂN THỊ SKELETON LOADING NẾU LÀ LOAD MỚI
+    if (!append && state.currentData.length === 0) {
+        document.getElementById('tableHead').innerHTML = '';
+        document.getElementById('tableBody').innerHTML = `
+            <tr class="skeleton-row"><td colspan="20"></td></tr>
+            <tr class="skeleton-row"><td colspan="20"></td></tr>
+            <tr class="skeleton-row"><td colspan="20"></td></tr>
+            <tr class="skeleton-row"><td colspan="20"></td></tr>
+            <tr class="skeleton-row"><td colspan="20"></td></tr>
+        `;
+        document.getElementById('uploadHeroContainer').style.display = 'none';
+        document.getElementById('dataWorkspace').classList.add('active');
+    }
+
     state.currentData = append ? [...state.currentData] : [];
     let validFiles = Array.from(files).filter(f => f.type === "application/pdf" || f.name.toLowerCase().endsWith('.pdf'));
     let total = validFiles.length, successCount = 0;
@@ -319,26 +303,52 @@ async function processBatchPDF(files, append = false) {
         let fileItemId = `file-${i}`;
         fileListEl.innerHTML += `<div class="file-item" id="${fileItemId}"><span class="file-item-name" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${file.name}</span><span class="status-text" style="color:var(--text-muted); margin-left:8px;">Đang chờ...</span></div>`;
         let fileStatusEl = document.querySelector(`#${fileItemId} .status-text`);
+        
         try {
             fileStatusEl.innerText = 'Đang đọc...';
             let data = await extractDataFromSinglePDF(file);
-            // 🔥 FIX: guard phòng thủ — nếu hàm lỡ trả về falsy thì không crash
+            
             if (!data || typeof data !== 'object') {
                 data = { hoTen: '', tuoi: '', gioiTinh: '', tests: {}, testCategories: {}, testRefRanges: {} };
             }
-            state.currentData.push(data);
-            successCount++;
-            fileStatusEl.innerText = 'Hoàn tất';
-            fileStatusEl.style.color = 'var(--success)';
+
+            // KIỂM TRA TRÙNG LẶP
+            let isDuplicate = false;
+            if (data.hoTen) {
+                let existingIndex = state.currentData.findIndex(r => r.hoTen && r.hoTen.toUpperCase() === data.hoTen.toUpperCase());
+                if (existingIndex !== -1) {
+                    let confirmOverwrite = confirm(`Bệnh nhân "${data.hoTen}" đã tồn tại trong danh sách!\n\nBấm OK để GHI ĐÈ dữ liệu cũ.\nBấm Cancel để BỎ QUA file này.`);
+                    if (confirmOverwrite) {
+                        state.currentData[existingIndex] = data;
+                        successCount++;
+                        isDuplicate = true;
+                        fileStatusEl.innerText = 'Ghi đè';
+                        fileStatusEl.style.color = 'var(--warning, #f59e0b)';
+                    } else {
+                        fileStatusEl.innerText = 'Bỏ qua (Trùng)';
+                        fileStatusEl.style.color = 'var(--text-muted)';
+                    }
+                }
+            }
+
+            if (!isDuplicate) {
+                state.currentData.push(data);
+                successCount++;
+                fileStatusEl.innerText = 'Hoàn tất';
+                fileStatusEl.style.color = 'var(--success)';
+            }
+
         } catch (error) {
             console.error('[processBatchPDF] File lỗi:', file.name, error);
             fileStatusEl.innerText = 'Lỗi';
             fileStatusEl.style.color = 'var(--danger)';
         }
+        
         let percent = Math.round(((i + 1) / total) * 100);
         barFill.style.width = `${percent}%`;
         progressPercent.innerText = `${percent}%`;
     }
+    
     progressText.innerText = `Xong`;
     setTimeout(() => { progressContainer.style.transform = 'translateY(-150%)'; }, 1200);
 

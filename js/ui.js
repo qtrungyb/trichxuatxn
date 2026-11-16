@@ -1,3 +1,63 @@
+window.currentColumnFilterMode = 'all';
+
+window.setColumnFilterMode = (mode) => {
+    window.currentColumnFilterMode = mode;
+    document.querySelectorAll('.filter-pill').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`filter-${mode}`).classList.add('active');
+    renderColumnDrawer();
+};
+
+window.toggleCategory = (catName, isChecked) => {
+    let colsToToggle = catName === "Thông tin Hành chính" 
+        ? BASE_COLUMNS.map(c => c.key) 
+        : state.dynamicTestCols.filter(c => c.category === catName).map(c => c.key);
+        
+    if (isChecked) {
+        colsToToggle.forEach(k => {
+            if (!state.activeColumns.includes(k)) state.activeColumns.push(k);
+        });
+    } else {
+        state.activeColumns = state.activeColumns.filter(k => !colsToToggle.includes(k));
+    }
+    
+    localStorage.setItem('vox_all_active_columns', JSON.stringify(state.activeColumns));
+    renderColumnDrawer();
+    renderTable();
+    scheduleFirebaseSync();
+};
+
+// Kéo thả trong Drawer
+let drawerDraggedKey = null;
+window.handleDrawerDragStart = (e, key) => {
+    drawerDraggedKey = key;
+    e.dataTransfer.effectAllowed = 'move';
+    e.currentTarget.style.opacity = '0.5';
+};
+window.handleDrawerDragOver = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+window.handleDrawerDragEnd = (e) => { e.currentTarget.style.opacity = '1'; };
+window.handleDrawerDrop = (e, targetKey) => {
+    e.preventDefault();
+    e.currentTarget.style.opacity = '1';
+    if (!drawerDraggedKey || drawerDraggedKey === targetKey) return;
+
+    let order = [...state.customColumnOrder];
+    if (order.length === 0) order = getAllColumns().map(c => c.key);
+    getAllColumns().forEach(c => { if (!order.includes(c.key)) order.push(c.key); });
+
+    order = order.filter(k => k !== drawerDraggedKey);
+    let targetIdx = order.indexOf(targetKey);
+    if (targetIdx === -1) order.push(drawerDraggedKey);
+    else order.splice(targetIdx, 0, drawerDraggedKey);
+
+    state.customColumnOrder = order;
+    localStorage.setItem('vox_custom_column_order', JSON.stringify(order));
+    drawerDraggedKey = null;
+    
+    renderColumnDrawer();
+    renderTable();
+    persistChanges(true);
+};
+
 function toggleHistoryDrawer() {
     const drawer = document.getElementById('historyDrawer');
     const overlay = document.getElementById('drawerOverlay');
@@ -61,10 +121,22 @@ function toggleDarkMode() {
     updateDarkModeIcon(document.body.classList.contains('dark-mode'));
 }
 
+// CẢI TIẾN MẬT ĐỘ: 3 CẤP ĐỘ (Mặc định -> Thu gọn -> Thoáng)
+window.currentDensity = parseInt(localStorage.getItem('vox_density_level')) || 0;
 function toggleDensity() {
-    document.body.classList.toggle('compact-mode');
-    localStorage.setItem('vox_compact_mode', document.body.classList.contains('compact-mode'));
-    showToast(document.body.classList.contains('compact-mode') ? "Đã bật chế độ thu gọn" : "Đã tắt chế độ thu gọn");
+    document.body.classList.remove('compact-mode', 'relaxed-mode');
+    window.currentDensity = (window.currentDensity + 1) % 3;
+    localStorage.setItem('vox_density_level', window.currentDensity);
+
+    if (window.currentDensity === 1) {
+        document.body.classList.add('compact-mode');
+        showToast("Mật độ: Thu gọn");
+    } else if (window.currentDensity === 2) {
+        document.body.classList.add('relaxed-mode');
+        showToast("Mật độ: Thoáng");
+    } else {
+        showToast("Mật độ: Mặc định");
+    }
 }
 
 function updateWorkspaceStats() {
@@ -85,15 +157,95 @@ function updateWorkspaceStats() {
     }
 }
 
+// Hàm Tìm kiếm
+window.handleGlobalSearch = (keyword) => {
+    state.searchKeyword = keyword.toLowerCase().trim();
+    renderTable();
+};
+
+// ================= CONTEXT MENU (CHUỘT PHẢI) =================
+window.showContextMenu = (e, index) => {
+    e.preventDefault(); // Ngăn menu mặc định của trình duyệt
+    window.contextMenuTargetIndex = index;
+    const menu = document.getElementById('customContextMenu');
+    if (!menu) return;
+    
+    menu.style.display = 'block';
+    
+    // Đảm bảo menu không bị tràn ra ngoài màn hình
+    let x = e.pageX;
+    let y = e.pageY;
+    const menuWidth = menu.offsetWidth || 180; 
+    const menuHeight = menu.offsetHeight || 50;
+    
+    if (x + menuWidth > document.documentElement.clientWidth) x -= menuWidth;
+    if (y + menuHeight > document.documentElement.clientHeight) y -= menuHeight;
+    
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+};
+
+// Ẩn menu khi click ra ngoài
+document.addEventListener('click', (e) => {
+    const menu = document.getElementById('customContextMenu');
+    if (menu && menu.style.display === 'block') {
+        menu.style.display = 'none';
+    }
+});
+
+// Hàm Xóa Bệnh Nhân (Từ Context Menu)
+window.deletePatient = (index) => {
+    // Ẩn menu
+    const menu = document.getElementById('customContextMenu');
+    if (menu) menu.style.display = 'none';
+
+    if (!confirm(`Bạn có chắc chắn muốn xóa bệnh nhân "${state.currentData[index].hoTen || 'này'}" ra khỏi bảng?`)) return;
+    state.currentData.splice(index, 1);
+    renderTable();
+    persistChanges(true);
+    showToast("Đã xóa bệnh nhân!");
+};
+// ==============================================================
+
 function renderTable() {
     updateWorkspaceStats();
     const thead = document.getElementById('tableHead');
     const tbody = document.getElementById('tableBody');
 
+    // --- 1. XỬ LÝ EMPTY STATE ---
     if (state.currentData.length === 0) {
         thead.innerHTML = '';
-        tbody.innerHTML = '';
+        tbody.innerHTML = `
+            <tr><td colspan="20">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="width:80px;height:80px;margin-bottom:16px;opacity:0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    <h3>Chưa có dữ liệu</h3>
+                    <p>Vui lòng tải lên file PDF kết quả xét nghiệm để bắt đầu trích xuất.</p>
+                </div>
+            </td></tr>`;
         return;
+    }
+
+    // --- 2. LỌC DỮ LIỆU THEO SEARCH KEYWORD ---
+    let displayData = state.currentData;
+    let searchKw = state.searchKeyword || '';
+    if (searchKw) {
+        displayData = state.currentData.filter(row => {
+            if (row.hoTen && row.hoTen.toLowerCase().includes(searchKw)) return true;
+            if (row.tuoi && row.tuoi.includes(searchKw)) return true;
+            if (row.tests) {
+                for (let k in row.tests) {
+                    if (row.tests[k] && String(row.tests[k]).toLowerCase().includes(searchKw)) return true;
+                }
+            }
+            return false;
+        });
+
+        if (displayData.length === 0) {
+            thead.innerHTML = '';
+            tbody.innerHTML = `<tr><td colspan="20"><div class="empty-state"><h3>Không tìm thấy kết quả</h3><p>Không có bệnh nhân hay chỉ số nào khớp với từ khóa "${searchKw}".</p></div></td></tr>`;
+            return;
+        }
     }
 
     let activeCols = getSortedActiveCols();
@@ -103,7 +255,11 @@ function renderTable() {
         return;
     }
 
-    let displayCols = [{ key: 'stt', label: 'STT', category: 'Thông tin Hành chính' }, ...activeCols];
+    // ĐÃ BỎ CỘT THAO TÁC (ACTIONS)
+    let displayCols = [
+        { key: 'stt', label: 'STT', category: 'Thông tin Hành chính' }, 
+        ...activeCols
+    ];
 
     let groupedCols = [], currentGroup = null;
     displayCols.forEach(col => {
@@ -183,12 +339,14 @@ function renderTable() {
 
     thead.innerHTML = `<tr class="tier-group">${row1HTML}</tr><tr class="tier-indicator">${row2HTML}</tr>`;
 
-    tbody.innerHTML = state.currentData.map((row, rowIndex) => {
+    tbody.innerHTML = displayData.map((row, rowIndex) => {
+        let originalIndex = state.currentData.indexOf(row);
+        
         let stickyOffset = 0;
         let tds = displayCols.map((col, i) => {
             let val = '', cellClass = '';
             if (col.key === 'stt') {
-                val = rowIndex + 1;
+                val = originalIndex + 1;
                 cellClass = 'col-data text-center';
             } else if (col.key.startsWith('test_')) {
                 let actualKey = col.key.replace('test_', '');
@@ -199,7 +357,6 @@ function renderTable() {
                 if (col.key !== 'hoTen') cellClass = 'col-data';
             }
 
-            // ===== KẾT QUẢ KHÁM: cột [CK]/[XQ]/[SA]/[NS] =====
             let isExamResult = /^test_\[(?:CK|XQ|SA|NS)\]/.test(col.key);
             if (isExamResult) cellClass += ' exam-result-cell';
 
@@ -232,7 +389,6 @@ function renderTable() {
                 if (val === '' || val === null || val === undefined) {
                     displayVal = '<span class="empty-cell">-</span>';
                 } else if (isExamResult) {
-                    // Kết quả khám: hiển thị raw text, không badge/không so khoảng TC
                     displayVal = val;
                 } else {
                     let lowerVal = String(val).toLowerCase();
@@ -241,7 +397,6 @@ function renderTable() {
                     } else if (lowerVal.includes('âm tính') || lowerVal === 'negative' || lowerVal === '-') {
                         displayVal = `<span class="badge-success">${val}</span>`;
                     } else if (col.key.startsWith('test_')) {
-                        // ===== Feature C: so sánh khoảng tham chiếu =====
                         let actualKey = col.key.replace('test_', '');
                         let ref = row.testRefRanges && row.testRefRanges[actualKey];
                         if (ref) {
@@ -264,13 +419,15 @@ function renderTable() {
             }
 
             let contentEditableAttr = col.key === 'stt' ? 'false' : 'true';
-            let oninputAttr = col.key === 'stt' ? '' : `oninput="window.updateData(${rowIndex}, '${col.key}', this.innerText)"`;
+            let oninputAttr = col.key === 'stt' ? '' : `oninput="window.updateData(${originalIndex}, '${col.key}', this.innerText)"`;
             let onblurAttr = (col.key !== 'stt' && col.key.startsWith('test_'))
-                ? `onblur="window.refreshCellAbnormal(this, ${rowIndex}, '${col.key}')"` : '';
+                ? `onblur="window.refreshCellAbnormal(this, ${originalIndex}, '${col.key}')"` : '';
 
-            return `<td class="${cellClass} ${groupEndClass} ${alignClass} ${stickyClass}" style="${stickyStyle}" contenteditable="${contentEditableAttr}" spellcheck="false" data-row="${rowIndex}" data-col-index="${i}" data-key="${col.key}" ${oninputAttr} ${onblurAttr}>${displayVal}</td>`;
+            return `<td class="${cellClass} ${groupEndClass} ${alignClass} ${stickyClass}" style="${stickyStyle}" contenteditable="${contentEditableAttr}" spellcheck="false" data-row="${originalIndex}" data-col-index="${i}" data-key="${col.key}" ${oninputAttr} ${onblurAttr}>${displayVal}</td>`;
         }).join('');
-        return `<tr>${tds}</tr>`;
+        
+        // THÊM SỰ KIỆN CHUỘT PHẢI VÀO DÒNG
+        return `<tr oncontextmenu="window.showContextMenu(event, ${originalIndex})">${tds}</tr>`;
     }).join('');
 
     setupCrosshairHover();
@@ -318,31 +475,76 @@ function renderColumnDrawer() {
     cats.forEach(cat => {
         let cols = cat === "Thông tin Hành chính" ? [...BASE_COLUMNS] : state.dynamicTestCols.filter(c => c.category === cat);
 
-        cols.sort((a, b) => {
-            let aSelected = state.activeColumns.includes(a.key) ? 1 : 0;
-            let bSelected = state.activeColumns.includes(b.key) ? 1 : 0;
-            return bSelected - aSelected;
-        });
-
         if (isSearching) {
             cols = cols.filter(c => c.label.toLowerCase().includes(keyword));
         }
+
+        if (window.currentColumnFilterMode === 'selected') {
+            cols = cols.filter(c => state.activeColumns.includes(c.key));
+        } else if (window.currentColumnFilterMode === 'unselected') {
+            cols = cols.filter(c => !state.activeColumns.includes(c.key));
+        }
+
         if (cols.length === 0) return;
 
+        if (!isSearching) {
+            cols.sort((a, b) => {
+                let aSelected = state.activeColumns.includes(a.key) ? 1 : 0;
+                let bSelected = state.activeColumns.includes(b.key) ? 1 : 0;
+                return bSelected - aSelected;
+            });
+        } else {
+            cols.sort((a, b) => {
+                let idxA = state.customColumnOrder.indexOf(a.key);
+                let idxB = state.customColumnOrder.indexOf(b.key);
+                return (idxA !== -1 ? idxA : 999) - (idxB !== -1 ? idxB : 999);
+            });
+        }
+
+        let totalInCat = cat === "Thông tin Hành chính" ? BASE_COLUMNS.length : state.dynamicTestCols.filter(c => c.category === cat).length;
+        let selectedInCat = cat === "Thông tin Hành chính" 
+            ? BASE_COLUMNS.filter(c => state.activeColumns.includes(c.key)).length
+            : state.dynamicTestCols.filter(c => c.category === cat && state.activeColumns.includes(c.key)).length;
+        
+        let isAllSelected = (selectedInCat === totalInCat && totalInCat > 0);
+
         let dotClass = getDotClass(cat);
-        html += `<div class="setting-cat-title"><span class="color-dot ${dotClass}"></span> ${formatCategoryName(cat)}</div>`;
+        html += `
+            <div class="setting-cat-title">
+                <label>
+                    <input type="checkbox" ${isAllSelected ? 'checked' : ''} onchange="window.toggleCategory('${cat}', this.checked)">
+                    <span class="color-dot ${dotClass}"></span> 
+                    ${formatCategoryName(cat)}
+                    <span style="color: var(--text-muted); font-weight: 400; font-size: 10px; margin-left: auto;">(${selectedInCat}/${totalInCat})</span>
+                </label>
+            </div>
+        `;
 
         cols.forEach(col => {
             let isChecked = state.activeColumns.includes(col.key);
-            let sampleVal = (col.key === 'hoTen' || col.key === 'tuoi' || col.key === 'gioiTinh')
-                ? (state.currentData[0] ? state.currentData[0][col.key] : '-')
+            let sampleVal = (col.key === 'hoTen' || col.key === 'tuoi' || col.key === 'gioiTinh') 
+                ? (state.currentData[0] ? state.currentData[0][col.key] : '-') 
                 : (col.sampleResult || '-');
+            
+            let sampleHtml = (sampleVal !== '-' && sampleVal !== '') 
+                ? `<span class="setting-sample" title="${sampleVal}">${sampleVal}</span>` 
+                : '';
+
             html += `
-                <label class="setting-item">
-                    <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="window.toggleColumn('${col.key}', this)">
-                    <span class="setting-label">${col.label}</span>
-                    <span class="setting-sample">${sampleVal}</span>
-                </label>
+                <div class="setting-item" draggable="true" 
+                     ondragstart="window.handleDrawerDragStart(event, '${col.key}')" 
+                     ondragover="window.handleDrawerDragOver(event)" 
+                     ondrop="window.handleDrawerDrop(event, '${col.key}')" 
+                     ondragend="window.handleDrawerDragEnd(event)">
+                    <div class="drawer-drag-handle" title="Kéo để sắp xếp">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+                    </div>
+                    <label style="display: flex; align-items: center; gap: 10px; flex: 1; cursor: pointer;">
+                        <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="window.toggleColumn('${col.key}', this)">
+                        <span class="setting-label" style="margin-right: auto;">${col.label}</span>
+                        ${sampleHtml}
+                    </label>
+                </div>
             `;
         });
     });

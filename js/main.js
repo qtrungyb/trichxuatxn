@@ -8,7 +8,68 @@ window.closeGuideModal = function(e) {
     if (e && e.target !== e.currentTarget) return;
     document.getElementById('guideModal').classList.remove('active');
 };
+// Hàm phụ trợ: Chuyển đổi cấu hình trực quan thành Regex
+function buildRegexConfig(categoriesStr, isNumber, isText, isSymbol) {
+    // 1. Tạo Regex cho Nhóm xét nghiệm
+    let cats = categoriesStr.split(',').map(s => s.trim()).filter(s => s);
+    let catRegex = cats.length > 0 ? `^(Xét nghiệm\\s+(?:${cats.join('|')}).*)` : `^(Xét nghiệm\\s+.*)`;
 
+    // 2. Tạo Regex cho Kết quả
+    let resultParts = [];
+    if (isSymbol) resultParts.push("(?:\\+\\/-|\\+|\\-)|(?:\\+)|(?:\\-)|(?:\\(\\+\\))|(?:\\(\\-\\))");
+    if (isNumber) resultParts.push("[\\d.,]+[A-Za-z%\\/\\^0-9]*");
+    if (isText) resultParts.push("Âm\\s*tính|Dương\\s*tính|neg|norm|Bình\\s*thường|Không\\s*phát\\s*hiện|Positive|Negative");
+    
+    // Nếu không chọn gì, fallback về Regex mặc định để không bị lỗi
+    let testLineRegex = resultParts.length > 0 ? `(${resultParts.join('|')})` : DEFAULT_REGEX_CONFIG.testLine;
+
+    return { testLine: testLineRegex, category: catRegex, rawCategories: categoriesStr, isNumber, isText, isSymbol };
+}
+
+window.openRegexModal = () => {
+    let cfg = state.regexConfig;
+    // Hiển thị dữ liệu ra giao diện mới
+    document.getElementById('cfgCategories').value = cfg.rawCategories || "huyết học, hóa sinh, nước tiểu, vi sinh, đông máu, miễn dịch";
+    document.getElementById('cfgFormatNumber').checked = cfg.isNumber !== false;
+    document.getElementById('cfgFormatText').checked = cfg.isText !== false;
+    document.getElementById('cfgFormatSymbol').checked = cfg.isSymbol !== false;
+    
+    document.getElementById('regexModal').classList.add('active');
+};
+
+window.saveRegexConfig = () => {
+    let categoriesStr = document.getElementById('cfgCategories').value.trim();
+    let isNumber = document.getElementById('cfgFormatNumber').checked;
+    let isText = document.getElementById('cfgFormatText').checked;
+    let isSymbol = document.getElementById('cfgFormatSymbol').checked;
+    
+    if (!categoriesStr) return showToast("Vui lòng nhập ít nhất 1 nhóm xét nghiệm!", true);
+    if (!isNumber && !isText && !isSymbol) return showToast("Vui lòng chọn ít nhất 1 định dạng kết quả!", true);
+    
+    // Build Regex tự động
+    let newConfig = buildRegexConfig(categoriesStr, isNumber, isText, isSymbol);
+    
+    state.regexConfig = newConfig;
+    localStorage.setItem('vox_regex_config', JSON.stringify(newConfig));
+    document.getElementById('regexModal').classList.remove('active');
+    showToast("Đã lưu cấu hình trích xuất!");
+};
+
+window.resetRegexConfig = () => {
+    if (!confirm("Khôi phục cài đặt gốc? Cấu hình hiện tại sẽ bị xóa.")) return;
+    localStorage.removeItem('vox_regex_config');
+    
+    // Khởi tạo lại mặc định
+    state.regexConfig = buildRegexConfig("huyết học, hóa sinh, nước tiểu, vi sinh, đông máu, miễn dịch", true, true, true);
+    
+    // Hiển thị lại lên form
+    document.getElementById('cfgCategories').value = "huyết học, hóa sinh, nước tiểu, vi sinh, đông máu, miễn dịch";
+    document.getElementById('cfgFormatNumber').checked = true;
+    document.getElementById('cfgFormatText').checked = true;
+    document.getElementById('cfgFormatSymbol').checked = true;
+    
+    showToast("Đã khôi phục mặc định!");
+};
 window.setTableTheme = (theme) => {
     Array.from(document.body.classList).forEach(cls => {
         if (cls.startsWith('theme-')) document.body.classList.remove(cls);
@@ -414,7 +475,10 @@ window.restoreFromPreview = () => {
 
 document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('vox_dark_mode') === 'true') { document.body.classList.add('dark-mode'); updateDarkModeIcon(true); }
-    if (localStorage.getItem('vox_compact_mode') === 'true') { document.body.classList.add('compact-mode'); }
+    // Khôi phục mật độ hiển thị (3 cấp độ)
+	window.currentDensity = parseInt(localStorage.getItem('vox_density_level')) || 0;
+	if (window.currentDensity === 1) document.body.classList.add('compact-mode');
+	else if (window.currentDensity === 2) document.body.classList.add('relaxed-mode');
 
     const savedTheme = localStorage.getItem('vox_table_theme') || 'default';
     window.setTableTheme(savedTheme);
